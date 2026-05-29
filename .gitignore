@@ -1,0 +1,34 @@
+# Database — contains personal trade data, created fresh by init_db()
+data/swing.db
+
+# Generated outputs
+data/reports/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Virtual environment
+.venv/
+
+# Environment variables
+.env
+.env.*
+
+# Claude Code local config (permissions, hooks — not needed by remote agents)
+.claude/settings.json
+.claude/settings.local.json
+.claude/hooks/
+
+# GStack browser logs
+.gstack/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/

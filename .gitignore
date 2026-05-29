@@ -4,6 +4,9 @@ data/swing.db
 # Generated outputs
 data/reports/
 
+# Keep results dir but ignore old runs (latest_* files are committed intentionally)
+results/archive/
+
 # Python
 __pycache__/
 *.pyc

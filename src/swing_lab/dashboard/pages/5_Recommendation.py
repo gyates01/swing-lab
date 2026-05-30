@@ -222,10 +222,12 @@ def _candle_chart(symbol: str, entry_zone_str: str = "", price: float | None = N
             ),
         ))
 
-        # Collect all horizontal level labels; draw hlines/hrects now, labels later.
-        # All level labels go on the LEFT to keep the right side clear for recent action.
-        # left_labels: list of (price, text, color, font_size)
-        left_labels: list[tuple[float, str, str, int]] = []
+        # Collect horizontal level labels with explicit yanchor per type.
+        # All go on the LEFT edge so recent price action stays unobstructed.
+        # Tuple: (price, text, color, font_size, yanchor)
+        #   yanchor "bottom" → text floats ABOVE the line
+        #   yanchor "top"    → text hangs BELOW the line
+        left_labels: list[tuple[float, str, str, int, str]] = []
 
         # Entry zone band (or single-price fallback)
         zone = _parse_entry_zone(entry_zone_str)
@@ -237,28 +239,31 @@ def _candle_chart(symbol: str, entry_zone_str: str = "", price: float | None = N
                 layer="below",
                 line=dict(color=GREEN, width=0.8, dash="dot"),
             )
-            left_labels.append((z_hi, f"Entry  ${z_lo:,.2f}–${z_hi:,.2f}", GREEN, 9))
+            # Hang label downward from z_hi so it sits inside the band
+            left_labels.append((z_hi, f"Entry  ${z_lo:,.2f}–${z_hi:,.2f}", GREEN, 9, "top"))
         else:
             single = re.findall(r"[\d,]+\.?\d*", entry_zone_str or "")
             if single:
                 ep = float(single[0].replace(",", ""))
                 fig.add_hline(y=ep, line=dict(color=GREEN, dash="dot", width=1))
-                left_labels.append((ep, f"Entry  ${ep:,.2f}", GREEN, 9))
+                left_labels.append((ep, f"Entry  ${ep:,.2f}", GREEN, 9, "bottom"))
 
         # Entry-zone extras: support shelf, chase limit, stop loss
         _KIND_STYLE = {
-            "support":     (AMBER, "Support",     "dash"),
-            "chase_limit": (RED,   "Avoid above", "dash"),
-            "stop":        (RED,   "Stop",        "dashdot"),
+            "support":     (AMBER, "Support",     "dash",    "top"),     # hangs below its line
+            "chase_limit": (RED,   "Avoid above", "dash",    "bottom"),  # floats above its line
+            "stop":        (RED,   "Stop",        "dashdot", "top"),
         }
         for lvl in _parse_entry_zone_extras(entry_zone_str):
-            color, label, dash = _KIND_STYLE.get(lvl["kind"], (TEXT_DIM, lvl["kind"].title(), "dot"))
+            color, label, dash, yanchor = _KIND_STYLE.get(
+                lvl["kind"], (TEXT_DIM, lvl["kind"].title(), "dot", "bottom")
+            )
             p = lvl["price"]
             fig.add_hline(y=p, line=dict(color=color, dash=dash, width=0.9))
-            left_labels.append((p, f"{label}  ${p:,.2f}", color, 9))
+            left_labels.append((p, f"{label}  ${p:,.2f}", color, 9, yanchor))
 
         # Claude analysis levels (support/resistance/targets from review text)
-        for lvl in _parse_price_levels(claude_summary):
+        for i, lvl in enumerate(_parse_price_levels(claude_summary)):
             if lvl["type"] == "range":
                 fig.add_hrect(
                     y0=lvl["lo"], y1=lvl["hi"],
@@ -266,27 +271,23 @@ def _candle_chart(symbol: str, entry_zone_str: str = "", price: float | None = N
                     layer="below",
                     line=dict(color=_PURPLE, width=0.5, dash="dot"),
                 )
-                left_labels.append((lvl["hi"], f"{lvl['label']}  ${lvl['lo']:,.0f}–${lvl['hi']:,.0f}", _PURPLE, 8))
+                left_labels.append((lvl["hi"], f"{lvl['label']}  ${lvl['lo']:,.0f}–${lvl['hi']:,.0f}", _PURPLE, 8, "top"))
             else:
                 fig.add_hline(y=lvl["price"], line=dict(color=_PURPLE, dash="dot", width=0.8))
-                left_labels.append((lvl["price"], f"{lvl['label']}  ${lvl['price']:,.2f}", _PURPLE, 8))
+                # Alternate above/below for unnamed Claude levels
+                left_labels.append((lvl["price"], f"{lvl['label']}  ${lvl['price']:,.2f}", _PURPLE, 8, "bottom" if i % 2 == 0 else "top"))
 
-        # Place all left-side labels: sort ascending by price, strictly alternate
-        # yanchor bottom/top so every consecutive pair lands on opposite sides of
-        # its line — guarantees no overlap regardless of how close the prices are.
-        # "bottom" → text floats above the line; "top" → text hangs below.
+        # Place all left-side labels using their prescribed yanchor
         if left_labels:
-            sorted_labels = sorted(left_labels, key=lambda t: t[0])
             left_x = hist.index[0]
-            anchors = ["bottom", "top"]
-            for i, (lbl_price, lbl_text, lbl_color, lbl_size) in enumerate(sorted_labels):
+            for lbl_price, lbl_text, lbl_color, lbl_size, lbl_anchor in left_labels:
                 fig.add_annotation(
                     x=left_x, y=lbl_price,
                     xref="x", yref="y",
                     text=lbl_text,
                     showarrow=False,
                     font=dict(color=lbl_color, size=lbl_size),
-                    xanchor="left", yanchor=anchors[i % 2],
+                    xanchor="left", yanchor=lbl_anchor,
                     bgcolor=CARD, borderpad=2,
                 )
 

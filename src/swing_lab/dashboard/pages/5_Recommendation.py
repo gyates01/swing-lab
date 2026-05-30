@@ -28,6 +28,54 @@ def _parse_entry_zone(text: str) -> tuple[float, float] | None:
     return None
 
 
+def _parse_entry_zone_extras(text: str) -> list[dict]:
+    """Extract support shelf, chase limit, and stop levels from entry_zone text.
+
+    Returns list of dicts:
+      {"kind": "support"|"chase_limit"|"stop", "price": float}
+    """
+    if not text:
+        return []
+
+    def _clean(s: str) -> float:
+        return float(s.replace(",", ""))
+
+    levels: list[dict] = []
+    seen: set[int] = set()
+
+    def _add(kind: str, raw: str) -> None:
+        try:
+            p = _clean(raw)
+        except ValueError:
+            return
+        if p <= 0 or round(p) in seen:
+            return
+        seen.add(round(p))
+        levels.append({"kind": kind, "price": p})
+
+    # Support: "$1,750 support" or "support at/near/shelf $1,750"
+    for m in re.finditer(r'\$(\d[\d,]*\.?\d*)\s+support', text, re.IGNORECASE):
+        _add("support", m.group(1))
+    for m in re.finditer(r'support(?:\s+shelf)?\D{0,20}\$(\d[\d,]*\.?\d*)', text, re.IGNORECASE):
+        _add("support", m.group(1))
+
+    # Chase limit: "avoid chasing above $X" / "avoid above $X" / "do not chase above $X"
+    for m in re.finditer(
+        r"(?:avoid(?:\s+chasing?)?|do\s+not\s+chase?|don'?t\s+chase?)"
+        r"\s+above\s+\$(\d[\d,]*\.?\d*)",
+        text, re.IGNORECASE,
+    ):
+        _add("chase_limit", m.group(1))
+
+    # Stop loss: "stop at/below/loss $X"
+    for m in re.finditer(r'stop(?:\s+loss)?\s+(?:at|below|under)\s+\$(\d[\d,]*\.?\d*)', text, re.IGNORECASE):
+        _add("stop", m.group(1))
+    for m in re.finditer(r'stop(?:\s+loss)?\D{0,6}\$(\d[\d,]*\.?\d*)', text, re.IGNORECASE):
+        _add("stop", m.group(1))
+
+    return levels
+
+
 def _parse_price_levels(text: str) -> list[dict]:
     """Extract named price ranges and single levels from Claude summary text.
 
@@ -207,6 +255,27 @@ def _candle_chart(symbol: str, entry_zone_str: str = "", price: float | None = N
                     xanchor="right", yanchor="bottom",
                     bgcolor=CARD, borderpad=2,
                 )
+
+        # Entry-zone extras: support shelf, chase limit, stop loss
+        _KIND_STYLE = {
+            "support":     (AMBER,  "Support"),
+            "chase_limit": (RED,    "Avoid above"),
+            "stop":        (RED,    "Stop"),
+        }
+        for lvl in _parse_entry_zone_extras(entry_zone_str):
+            color, label = _KIND_STYLE.get(lvl["kind"], (TEXT_DIM, lvl["kind"].title()))
+            p = lvl["price"]
+            dash = "dashdot" if lvl["kind"] == "stop" else "dash"
+            fig.add_hline(y=p, line=dict(color=color, dash=dash, width=0.9))
+            fig.add_annotation(
+                x=hist.index[-1], y=p,
+                xref="x", yref="y",
+                text=f"{label}  ${p:,.2f}",
+                showarrow=False,
+                font=dict(color=color, size=9),
+                xanchor="right", yanchor="bottom",
+                bgcolor=CARD, borderpad=2,
+            )
 
         # Claude analysis levels (support/resistance/targets extracted from review text)
         for lvl in _parse_price_levels(claude_summary):
@@ -556,6 +625,7 @@ else:
             col2.markdown(_runner_html(second, 2), unsafe_allow_html=True)
             runner2_chart = _candle_chart(
                 second["symbol"],
+                entry_zone_str=second.get("entry_zone", ""),
                 price=second.get("price_at_scan"),
                 session=second.get("price_session", ""),
                 period="2mo",
@@ -568,6 +638,7 @@ else:
             col3.markdown(_runner_html(third, 3), unsafe_allow_html=True)
             runner3_chart = _candle_chart(
                 third["symbol"],
+                entry_zone_str=third.get("entry_zone", ""),
                 price=third.get("price_at_scan"),
                 session=third.get("price_session", ""),
                 period="2mo",

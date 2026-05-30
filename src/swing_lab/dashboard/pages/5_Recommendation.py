@@ -271,31 +271,24 @@ def _candle_chart(symbol: str, entry_zone_str: str = "", price: float | None = N
                 fig.add_hline(y=lvl["price"], line=dict(color=_PURPLE, dash="dot", width=0.8))
                 left_labels.append((lvl["price"], f"{lvl['label']}  ${lvl['price']:,.2f}", _PURPLE, 8))
 
-        # Place all left-side labels: sort by price, stagger close pairs to prevent overlap.
-        # "bottom" = text above the line (default); "top" = text below the line.
+        # Place all left-side labels: sort ascending by price, strictly alternate
+        # yanchor bottom/top so every consecutive pair lands on opposite sides of
+        # its line — guarantees no overlap regardless of how close the prices are.
+        # "bottom" → text floats above the line; "top" → text hangs below.
         if left_labels:
-            y_range = max(hist["High"].max() - hist["Low"].min(), 1.0)
-            min_gap = y_range * 0.025  # 2.5% of visible range triggers stagger
             sorted_labels = sorted(left_labels, key=lambda t: t[0])
-            prev_price: float | None = None
-            prev_anchor = "bottom"
             left_x = hist.index[0]
-            for lbl_price, lbl_text, lbl_color, lbl_size in sorted_labels:
-                if prev_price is not None and (lbl_price - prev_price) < min_gap:
-                    yanchor = "top" if prev_anchor == "bottom" else "bottom"
-                else:
-                    yanchor = "bottom"
+            anchors = ["bottom", "top"]
+            for i, (lbl_price, lbl_text, lbl_color, lbl_size) in enumerate(sorted_labels):
                 fig.add_annotation(
                     x=left_x, y=lbl_price,
                     xref="x", yref="y",
                     text=lbl_text,
                     showarrow=False,
                     font=dict(color=lbl_color, size=lbl_size),
-                    xanchor="left", yanchor=yanchor,
+                    xanchor="left", yanchor=anchors[i % 2],
                     bgcolor=CARD, borderpad=2,
                 )
-                prev_price = lbl_price
-                prev_anchor = yanchor
 
         # Current price line — right side only, so it doesn't compete with level labels
         if price:

@@ -1,0 +1,27 @@
+﻿Fetching macro gate...
+MACRO GATE � PARTIAL | score=67.2 | sizing=60%
+Scoring S&P 500 universe (this takes ~2�3 minutes)...
+    symbol    sector                    momentum    score    gate_sizing
+--  --------  ----------------------  ----------  -------  -------------
+ 0  AES       Utilities                     0.49   100.00           0.60
+ 1  APA       Energy                        1.53   100.00           0.60
+ 2  IVZ       Financials                    0.81   100.00           0.60
+ 3  FIX       Industrials                   2.90   100.00           0.60
+ 4  SNDK      Information Technology       31.89   100.00           0.60
+ 5  VTRS      Health Care                   0.82   100.00           0.60
+ 6  SATS      Communication Services        4.95   100.00           0.60
+ 7  ALB       Materials                     2.30   100.00           0.60
+ 8  TPR       Consumer Discretionary        0.75   100.00           0.60
+ 9  CASY      Consumer Staples              0.91   100.00           0.60
+10  WELL      Real Estate                   0.44   100.00           0.60
+11  VRT       Industrials                   2.02    98.73           0.60
+12  C         Financials                    0.70    98.68           0.60
+13  LITE      Information Technology       11.46    98.63           0.60
+14  MRNA      Health Care                   0.77    98.31           0.60
+15  ROST      Consumer Discretionary        0.62    97.92           0.60
+16  CAT       Industrials                   1.52    97.47           0.60
+17  CFG       Financials                    0.62    97.37           0.60
+18  WDC       Information Technology        7.57    97.26           0.60
+19  BG        Consumer Staples              0.65    97.22           0.60
+
+Scan #19 saved to swing.db

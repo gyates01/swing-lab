@@ -28,6 +28,9 @@ __pycache__/
 # GStack browser logs
 .gstack/
 
+# Superpowers brainstorm sessions (visual companion mockups)
+.superpowers/
+
 # OS
 .DS_Store
 Thumbs.db

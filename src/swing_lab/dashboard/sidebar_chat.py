@@ -128,90 +128,99 @@ def _save_chat() -> None:
         conn.close()
 
 
-def render(visible_df=None) -> None:
-    """Render the analyst sidebar chat widget. Call from every page."""
+@st.dialog("Analyst Chat", width="large")
+def _chat_dialog(visible_df=None) -> None:
+    """Analyst chat rendered inside st.dialog."""
     _init_state()
 
-    with st.sidebar:
-        st.markdown("**Analyst**")
+    # ── Saved sessions ─────────────────────────────────────────────────────────
+    from swing_lab.dashboard.lib import load_analyst_session_list, load_analyst_session_messages
+    sessions = load_analyst_session_list()
+    if sessions:
+        session_titles = [s["title"] for s in sessions]
+        session_ids = [s["session_id"] for s in sessions]
+        c_sel, c_load, c_del = st.columns([3, 1, 1])
+        sel_idx = c_sel.selectbox(
+            "Saved",
+            range(len(session_titles)),
+            format_func=lambda i: session_titles[i],
+            label_visibility="collapsed",
+            key="analyst_session_select",
+        )
+        if c_load.button("Load", key="analyst_load_btn", use_container_width=True):
+            msgs = load_analyst_session_messages(session_ids[sel_idx])
+            st.session_state["analyst_history"] = msgs
+            st.rerun()
+        if c_del.button("Del", key="analyst_del_btn", use_container_width=True):
+            from swing_lab.db import init_db, delete_analyst_session
+            conn = init_db()
+            try:
+                delete_analyst_session(conn, session_ids[sel_idx])
+            finally:
+                conn.close()
+            st.rerun()
         st.divider()
 
-        # ── Saved sessions ─────────────────────────────────────────────────────
-        from swing_lab.dashboard.lib import load_analyst_session_list, load_analyst_session_messages
-        sessions = load_analyst_session_list()
-        if sessions:
-            session_titles = [s["title"] for s in sessions]
-            session_ids = [s["session_id"] for s in sessions]
-            c_sel, c_load, c_del = st.columns([3, 1, 1])
-            sel_idx = c_sel.selectbox(
-                "Saved",
-                range(len(session_titles)),
-                format_func=lambda i: session_titles[i],
-                label_visibility="collapsed",
-                key="analyst_session_select",
-            )
-            if c_load.button("Load", key="analyst_load_btn", use_container_width=True):
-                msgs = load_analyst_session_messages(session_ids[sel_idx])
-                st.session_state["analyst_history"] = msgs
-                st.rerun()
-            if c_del.button("Del", key="analyst_del_btn", use_container_width=True):
-                from swing_lab.db import init_db, delete_analyst_session
-                conn = init_db()
-                try:
-                    delete_analyst_session(conn, session_ids[sel_idx])
-                finally:
-                    conn.close()
-                st.rerun()
-            st.divider()
+    # ── Chat history ───────────────────────────────────────────────────────────
+    _render_history()
 
-        # ── Chat history ───────────────────────────────────────────────────────
-        _render_history()
+    # ── Chat input ─────────────────────────────────────────────────────────────
+    user_input = st.chat_input("Ask the analyst…", key="analyst_chat_input")
+    if user_input:
+        with st.spinner("Thinking…"):
+            _run_turn(user_input, visible_df)
+        st.rerun()
 
-        # ── Chat input ─────────────────────────────────────────────────────────
-        user_input = st.chat_input("Ask the analyst…", key="analyst_chat_input")
-        if user_input:
-            with st.spinner("Thinking…"):
-                _run_turn(user_input, visible_df)
+    st.divider()
+
+    # ── Deep dive ──────────────────────────────────────────────────────────────
+    snapshot = st.session_state.get("analyst_snapshot") or {}
+    scan_info = snapshot.get("scan") or {}
+    symbols = [p["symbol"] for p in scan_info.get("top_10", []) if p.get("symbol")]
+
+    if symbols:
+        c_sym, c_go = st.columns([3, 1])
+        dd_sym = c_sym.selectbox(
+            "Deep dive",
+            symbols,
+            label_visibility="collapsed",
+            key="analyst_dd_sym",
+        )
+        if c_go.button("Go", key="analyst_dd_btn", use_container_width=True):
+            with st.spinner(f"Deep diving {dd_sym}…"):
+                _run_turn(f"Please do a deep dive on {dd_sym}.", visible_df)
             st.rerun()
 
-        st.divider()
+    # ── Save / Clear ───────────────────────────────────────────────────────────
+    c_save, c_clear = st.columns(2)
+    if c_save.button("Save chat", key="analyst_save_btn", use_container_width=True):
+        _save_chat()
+    if c_clear.button("Clear", key="analyst_clear_btn", use_container_width=True):
+        st.session_state["analyst_history"] = []
+        st.session_state["analyst_last_telemetry"] = {}
+        st.rerun()
 
-        # ── Deep dive ─────────────────────────────────────────────────────────
-        snapshot = st.session_state.get("analyst_snapshot") or {}
-        scan_info = snapshot.get("scan") or {}
-        symbols = [p["symbol"] for p in scan_info.get("top_10", []) if p.get("symbol")]
+    # ── Telemetry caption ──────────────────────────────────────────────────────
+    telemetry = st.session_state.get("analyst_last_telemetry") or {}
+    if telemetry:
+        cache_str = "cache hit" if telemetry.get("cache_hit") else "cache miss"
+        tokens = telemetry.get("tokens_saved", 0)
+        tools = telemetry.get("tool_calls") or []
+        parts = [cache_str]
+        if tokens > 0:
+            parts.append(f"{tokens:,} tokens saved")
+        if tools:
+            parts.append(f"tools: {', '.join(tools)}")
+        st.caption(" · ".join(parts))
 
-        if symbols:
-            c_sym, c_go = st.columns([3, 1])
-            dd_sym = c_sym.selectbox(
-                "Deep dive",
-                symbols,
-                label_visibility="collapsed",
-                key="analyst_dd_sym",
-            )
-            if c_go.button("Go", key="analyst_dd_btn", use_container_width=True):
-                with st.spinner(f"Deep diving {dd_sym}…"):
-                    _run_turn(f"Please do a deep dive on {dd_sym}.", visible_df)
-                st.rerun()
 
-        # ── Save / Clear ───────────────────────────────────────────────────────
-        c_save, c_clear = st.columns(2)
-        if c_save.button("Save chat", key="analyst_save_btn", use_container_width=True):
-            _save_chat()
-        if c_clear.button("Clear", key="analyst_clear_btn", use_container_width=True):
-            st.session_state["analyst_history"] = []
-            st.session_state["analyst_last_telemetry"] = {}
-            st.rerun()
+def render_floating_button(visible_df=None) -> None:
+    """Inject the floating chat button (bottom-right). Call from every page."""
+    _init_state()
+    if st.button("💬", key="analyst_float_btn", help="Open Analyst Chat"):
+        _chat_dialog(visible_df)
 
-        # ── Telemetry caption ──────────────────────────────────────────────────
-        telemetry = st.session_state.get("analyst_last_telemetry") or {}
-        if telemetry:
-            cache_str = "cache hit" if telemetry.get("cache_hit") else "cache miss"
-            tokens = telemetry.get("tokens_saved", 0)
-            tools = telemetry.get("tool_calls") or []
-            parts = [cache_str]
-            if tokens > 0:
-                parts.append(f"{tokens:,} tokens saved")
-            if tools:
-                parts.append(f"tools: {', '.join(tools)}")
-            st.caption(" · ".join(parts))
+
+def render(visible_df=None) -> None:
+    """Kept for backward compat — redirects to floating button."""
+    render_floating_button(visible_df)

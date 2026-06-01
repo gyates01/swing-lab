@@ -2,7 +2,7 @@
 import streamlit as st
 from swing_lab.dashboard.lib import load_gate_runs, load_scans, load_open_trades, score_color, fmt_local_time
 from swing_lab.dashboard.theme import (
-    inject, metric_html, ACCENT, GREEN, AMBER, RED, PURPLE,
+    inject, render_topbar, metric_html, ACCENT, GREEN, AMBER, RED, PURPLE,
     CARD, BORDER, TEXT, TEXT_DIM, TEXT_MUTED
 )
 from swing_lab.dashboard import sidebar_chat
@@ -15,6 +15,7 @@ st.set_page_config(
 inject()
 st.session_state["current_page"] = "home"
 sidebar_chat.render()
+render_topbar()
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""

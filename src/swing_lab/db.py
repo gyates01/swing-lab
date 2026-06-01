@@ -101,7 +101,12 @@ def init_db() -> sqlite3.Connection:
             is_synthesized      INTEGER NOT NULL DEFAULT 0,
             cache_hit           INTEGER,
             price_at_scan       REAL,
-            price_session       TEXT
+            price_session       TEXT,
+            entry_low           REAL,
+            entry_high          REAL,
+            support             REAL,
+            stop_price          REAL,
+            target              REAL
         );
         CREATE TABLE IF NOT EXISTS analyst_sessions (
             session_id    TEXT PRIMARY KEY,
@@ -118,6 +123,11 @@ def init_db() -> sqlite3.Connection:
         "ALTER TABLE recommendations ADD COLUMN price_at_scan REAL",
         "ALTER TABLE recommendations ADD COLUMN price_session TEXT",
         "ALTER TABLE trades ADD COLUMN rec_id INTEGER",
+        "ALTER TABLE recommendations ADD COLUMN entry_low REAL",
+        "ALTER TABLE recommendations ADD COLUMN entry_high REAL",
+        "ALTER TABLE recommendations ADD COLUMN support REAL",
+        "ALTER TABLE recommendations ADD COLUMN stop_price REAL",
+        "ALTER TABLE recommendations ADD COLUMN target REAL",
     ]:
         try:
             conn.execute(migration)
@@ -221,6 +231,11 @@ def save_recommendations(conn, scan_id: int, recs: list[dict]) -> int:
             rec.get("cache_hit"),
             rec.get("price_at_scan"),
             rec.get("price_session", ""),
+            rec.get("entry_low"),
+            rec.get("entry_high"),
+            rec.get("support"),
+            rec.get("stop"),
+            rec.get("target"),
         )
         if existing:
             cursor.execute(
@@ -228,7 +243,8 @@ def save_recommendations(conn, scan_id: int, recs: list[dict]) -> int:
                    batch_id=?, created_at=?, scan_id=?, review_id=?, rank=?, symbol=?,
                    blended_score=?, sizing_pct=?, gate_sizing=?, rationale=?,
                    risks_json=?, exit_triggers_json=?, entry_zone=?, is_synthesized=?,
-                   cache_hit=?, price_at_scan=?, price_session=?
+                   cache_hit=?, price_at_scan=?, price_session=?,
+                   entry_low=?, entry_high=?, support=?, stop_price=?, target=?
                    WHERE rec_id=?""",
                 (*values, existing[0]),
             )
@@ -238,8 +254,9 @@ def save_recommendations(conn, scan_id: int, recs: list[dict]) -> int:
                    (batch_id, created_at, scan_id, review_id, rank, symbol,
                     blended_score, sizing_pct, gate_sizing, rationale,
                     risks_json, exit_triggers_json, entry_zone, is_synthesized,
-                    cache_hit, price_at_scan, price_session)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    cache_hit, price_at_scan, price_session,
+                    entry_low, entry_high, support, stop_price, target)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 values,
             )
     conn.commit()
@@ -254,7 +271,9 @@ def load_latest_recommendations(conn) -> list[dict]:
         """SELECT r.rec_id, r.batch_id, r.created_at, r.scan_id, r.review_id, r.rank, r.symbol,
                   r.blended_score, r.sizing_pct, r.gate_sizing, r.rationale, r.risks_json,
                   r.exit_triggers_json, r.entry_zone, r.is_synthesized, r.cache_hit,
-                  r.price_at_scan, r.price_session, rv.claude_summary
+                  r.price_at_scan, r.price_session,
+                  r.entry_low, r.entry_high, r.support, r.stop_price, r.target,
+                  rv.claude_summary
            FROM recommendations r
            LEFT JOIN reviews rv ON r.review_id = rv.review_id
            WHERE date(r.created_at) = ?

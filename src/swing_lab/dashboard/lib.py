@@ -142,7 +142,11 @@ def load_trades() -> pd.DataFrame:
 
 def load_open_trades() -> pd.DataFrame:
     return _safe_read(
-        "SELECT * FROM trades WHERE exit_price IS NULL ORDER BY trade_id DESC"
+        """SELECT t.*, r.entry_zone as rec_entry_zone
+           FROM trades t
+           LEFT JOIN recommendations r ON t.rec_id = r.rec_id
+           WHERE t.exit_price IS NULL
+           ORDER BY t.trade_id DESC"""
     )
 
 

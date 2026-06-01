@@ -4,16 +4,60 @@ import pandas as pd
 import plotly.graph_objects as go
 from swing_lab.dashboard.lib import load_scans, load_scan_picks, fmt_local_time
 from swing_lab.dashboard.theme import (
-    inject, make_fig, metric_html, section_header_html,
+    inject, render_topbar, make_fig, metric_html, section_header_html,
+    ticker_hero_html, risk_row_html,
     ACCENT, GREEN, RED, AMBER, BORDER, CARD, TEXT, TEXT_DIM, TEXT_MUTED,
 )
 
 from swing_lab.dashboard import sidebar_chat
 
+
+def _picks_table_html(df: pd.DataFrame) -> str:
+    hdr = (
+        f"color:{TEXT_DIM};font-size:0.68rem;text-transform:uppercase;"
+        f"letter-spacing:0.08em;padding:10px 14px;border-bottom:1px solid {BORDER};text-align:left;"
+    )
+    cell = f"padding:9px 14px;border-bottom:1px solid {BORDER}33;font-size:0.82rem;vertical-align:middle;"
+    rows = ""
+    for i, (_, row) in enumerate(df.iterrows(), 1):
+        mom = row.get("momentum")
+        rank = row.get("rank_score")
+        mom_val = float(mom) if pd.notna(mom) else None
+        rank_val = float(rank) if pd.notna(rank) else None
+        mom_str = f"{mom_val*100:+.1f}%" if mom_val is not None else "—"
+        rank_str = f"{rank_val:.0f}" if rank_val is not None else "—"
+        rank_color = GREEN if (rank_val is not None and rank_val >= 70) else (AMBER if (rank_val is not None and rank_val >= 40) else RED)
+        mom_color = GREEN if (mom_val is not None and mom_val > 0) else RED
+        rows += (
+            f'<tr>'
+            f'<td style="{cell}color:{TEXT_DIM};width:36px;">{i}</td>'
+            f'<td style="{cell}color:{TEXT};font-family:\'DM Mono\',monospace;font-weight:600;">{row["symbol"]}</td>'
+            f'<td style="{cell}color:{TEXT_MUTED};">{row.get("sector") or "—"}</td>'
+            f'<td style="{cell}color:{mom_color};font-family:\'DM Mono\',monospace;text-align:right;">{mom_str}</td>'
+            f'<td style="{cell}color:{rank_color};font-family:\'DM Mono\',monospace;text-align:right;padding-right:18px;">{rank_str}</td>'
+            f'</tr>'
+        )
+    return (
+        f'<div style="background:{CARD};border:1px solid {BORDER};border-radius:10px;overflow:hidden;">'
+        f'<table style="width:100%;border-collapse:collapse;">'
+        f'<thead><tr>'
+        f'<th style="{hdr}width:36px;">#</th>'
+        f'<th style="{hdr}">Symbol</th>'
+        f'<th style="{hdr}">Sector</th>'
+        f'<th style="{hdr}text-align:right;">12-1m Momentum</th>'
+        f'<th style="{hdr}text-align:right;padding-right:18px;">Sector Rank</th>'
+        f'</tr></thead>'
+        f'<tbody>{rows}</tbody>'
+        f'</table>'
+        f'</div>'
+    )
+
+
 st.set_page_config(page_title="Scanner — Swing Lab", layout="wide")
 inject()
 st.session_state["current_page"] = "scanner"
 sidebar_chat.render()
+render_topbar()
 
 st.markdown(f"""
 <div style="margin-bottom:6px;">
@@ -147,9 +191,14 @@ with chart_l:
 
     if max_sector_pct > 0.4:
         dominant = sector_counts.idxmax()
-        st.warning(
-            f"**Concentration flag:** {dominant} makes up {max_sector_pct*100:.0f}% of picks. "
-            "High sector concentration increases correlated drawdown risk."
+        st.markdown(
+            risk_row_html(
+                "high",
+                f"Sector concentration — {dominant} {max_sector_pct*100:.0f}%",
+                "High sector concentration increases correlated drawdown risk. "
+                "Consider sizing down or skipping the sector's lower-ranked picks.",
+            ),
+            unsafe_allow_html=True,
         )
 
 with chart_r:
@@ -184,20 +233,41 @@ st.markdown(section_header_html("Top 20 Picks"), unsafe_allow_html=True)
 
 missing_count = picks["momentum"].isna().sum()
 if missing_count > 0:
-    st.warning(f"**Data quality flag:** {missing_count} symbol(s) missing momentum data (yfinance fetch failed).")
+    st.markdown(
+        risk_row_html(
+            "med",
+            f"Data quality — {missing_count} symbol(s) missing momentum data",
+            "yfinance failed to fetch price history for these symbols. Their rank scores may be inaccurate.",
+        ),
+        unsafe_allow_html=True,
+    )
 
-display = picks.copy()
-display["momentum_pct"] = display["momentum"].apply(
-    lambda x: f"{x*100:.1f}%" if pd.notna(x) else "—"
-)
-display["rank_score_fmt"] = display["rank_score"].apply(
-    lambda x: f"{x:.1f}" if pd.notna(x) else "—"
-)
-table = display[["symbol", "sector", "momentum_pct", "rank_score_fmt"]].copy()
-table.columns = ["Symbol", "Sector", "12-1m Momentum", "Sector Rank (0–100)"]
-table.index = range(1, len(table) + 1)
-st.dataframe(table, use_container_width=True)
+st.markdown(_picks_table_html(picks), unsafe_allow_html=True)
 st.caption(
     "Sector Rank is a percentile within the symbol's GICS sector (100 = top of sector). "
     "Picks are sorted by sector rank descending."
 )
+
+# ── Optional ticker hero for a selected pick ───────────────────────────────────
+st.markdown(section_header_html("Inspect a pick"), unsafe_allow_html=True)
+selected_sym = st.selectbox(
+    "Symbol",
+    ["—"] + picks["symbol"].tolist(),
+    key="scanner_inspect_sym",
+    label_visibility="collapsed",
+)
+if selected_sym != "—":
+    row = picks[picks["symbol"] == selected_sym].iloc[0]
+    mom_pct = f"{row['momentum']*100:+.1f}%" if pd.notna(row["momentum"]) else "—"
+    rank = f"{row['rank_score']:.0f}/100" if pd.notna(row["rank_score"]) else "—"
+    badge_color = GREEN if (pd.notna(row["rank_score"]) and row["rank_score"] >= 70) else AMBER
+    st.markdown(
+        ticker_hero_html(
+            selected_sym,
+            f"Rank {rank}",
+            "TOP PICK" if row.get("rank", 99) <= 3 else f"#{int(row.get('rank', 99))}",
+            badge_color,
+            f"12-1m momentum: {mom_pct} &nbsp;·&nbsp; Sector: {row.get('sector', '—')}",
+        ),
+        unsafe_allow_html=True,
+    )

@@ -13,7 +13,7 @@ BORDER      = "#272931"
 SIDEBAR_BG  = "#0e0f13"
 TEXT        = "#f2f2f5"
 TEXT_MUTED  = "#9da0b8"
-TEXT_DIM    = "#7a7e96"
+TEXT_DIM    = "#8c8fa8"
 ACCENT      = "#6366f1"   # indigo
 GREEN       = "#22c55e"
 RED         = "#ef4444"
@@ -23,9 +23,39 @@ PURPLE      = "#7c6af7"
 
 CHART_COLORS = [ACCENT, GREEN, AMBER, RED, BLUE, PURPLE, "#0ea5e9", "#f43f5e"]
 
+# ── Type scale ──────────────────────────────────────────────────────────────────
+FS_2XS  = "0.62rem"
+FS_XS   = "0.68rem"
+FS_SM   = "0.78rem"
+FS_MD   = "0.85rem"
+FS_BASE = "0.875rem"   # standard Streamlit UI text (nav, tabs, expanders, page links)
+FS_LG   = "0.95rem"
+FS_XL   = "1.05rem"
+FS_2XL  = "1.6rem"
+FS_3XL  = "2rem"
+FS_4XL  = "2.8rem"
+FS_5XL  = "4.5rem"
+
+# ── Spacing scale (px) ──────────────────────────────────────────────────────────
+SP_1 = "4px"
+SP_2 = "8px"
+SP_3 = "12px"
+SP_4 = "16px"
+SP_5 = "20px"
+SP_6 = "24px"
+SP_8 = "32px"
+SP_9 = "36px"
+
+# ── Component tokens ────────────────────────────────────────────────────────────
+RADIUS    = "10px"   # standard cards, expanders
+RADIUS_LG = "14px"   # hero / composite score cards
+RADIUS_SM = "8px"    # tags, buttons, inputs
+RADIUS_XS = "6px"    # inline chips
+TRANS     = "0.15s ease"  # standard UI transition
+
 # ── Plotly base layout ─────────────────────────────────────────────────────────
 _PLOTLY_LAYOUT = dict(
-    paper_bgcolor=CARD,
+    paper_bgcolor="rgba(0,0,0,0)",  # transparent — blends with page background
     plot_bgcolor=CARD,
     font=dict(
         family="'IBM Plex Sans', system-ui, sans-serif",
@@ -50,16 +80,17 @@ _PLOTLY_LAYOUT = dict(
         borderwidth=1,
         font=dict(color=TEXT_MUTED, size=11),
     ),
-    margin=dict(l=48, r=32, t=44, b=40),
+    margin=dict(l=48, r=32, t=36, b=40),
     hoverlabel=dict(
         bgcolor=CARD2,
         bordercolor=BORDER,
         font=dict(color=TEXT, size=12),
     ),
     title=dict(
-        font=dict(color=TEXT_MUTED, size=13, family="'IBM Plex Sans', system-ui, sans-serif"),
+        text="",  # explicit empty prevents Plotly.js from rendering "undefined"
+        font=dict(color=TEXT_DIM, size=12, family="'DM Mono', 'IBM Plex Mono', monospace"),
         x=0,
-        pad=dict(l=0),
+        pad=dict(l=0, t=0),
     ),
 )
 
@@ -81,16 +112,16 @@ def make_fig(**layout_overrides) -> go.Figure:
 
 def metric_html(label: str, value: str, sub: str = "", accent_color: str = ACCENT) -> str:
     sub_block = (
-        f'<div style="color:{TEXT_DIM};font-size:0.73rem;margin-top:5px;">{sub}</div>'
+        f'<div style="color:{TEXT_DIM};font-size:{FS_SM};margin-top:{SP_1};">{sub}</div>'
         if sub else ""
     )
     return f"""
 <div style="background:{CARD};border:1px solid {BORDER};border-top:2px solid {accent_color};
-            border-radius:10px;padding:18px 22px;">
-    <div style="color:{TEXT_DIM};font-size:0.68rem;text-transform:uppercase;
-                letter-spacing:0.09em;margin-bottom:8px;">{label}</div>
+            border-radius:{RADIUS};padding:{SP_5} {SP_6};">
+    <div style="color:{TEXT_DIM};font-size:{FS_XS};text-transform:uppercase;
+                letter-spacing:0.09em;margin-bottom:{SP_2};">{label}</div>
     <div style="color:{TEXT};font-family:'DM Mono','IBM Plex Mono',monospace;
-                font-size:1.6rem;font-weight:600;line-height:1.1;">{value}</div>
+                font-size:{FS_2XL};font-weight:600;line-height:1.1;">{value}</div>
     {sub_block}
 </div>"""
 
@@ -99,20 +130,20 @@ def score_card_html(name: str, val: float, flag_note: str = "") -> str:
     color = GREEN if val >= 70 else (AMBER if val >= 40 else RED)
     label = "Healthy" if val >= 70 else ("Caution" if val >= 40 else "Warning")
     flag_block = (
-        f'<div style="color:{RED};font-size:0.7rem;margin-top:8px;line-height:1.35;">'
+        f'<div style="color:{RED};font-size:{FS_SM};margin-top:{SP_2};line-height:1.35;">'
         f'[!] {flag_note}</div>'
     ) if flag_note and val < 20 else ""
     return f"""
 <div style="background:{CARD};border:1px solid {BORDER};border-top:3px solid {color};
-            border-radius:10px;padding:18px 20px;height:100%;box-sizing:border-box;">
-    <div style="color:{TEXT_DIM};font-size:0.68rem;text-transform:uppercase;
-                letter-spacing:0.08em;margin-bottom:10px;">{name}</div>
+            border-radius:{RADIUS};padding:{SP_5} {SP_5};height:100%;box-sizing:border-box;">
+    <div style="color:{TEXT_DIM};font-size:{FS_XS};text-transform:uppercase;
+                letter-spacing:0.08em;margin-bottom:{SP_2};">{name}</div>
     <div style="color:{TEXT};font-family:'DM Mono','IBM Plex Mono',monospace;
-                font-size:2rem;font-weight:700;line-height:1;">
-        {val:.0f}<span style="color:{TEXT_DIM};font-size:1rem;font-weight:400;">/100</span>
+                font-size:{FS_3XL};font-weight:700;line-height:1;">
+        {val:.0f}<span style="color:{TEXT_DIM};font-size:{FS_XL};font-weight:400;">/100</span>
     </div>
-    <div style="margin-top:10px;">
-        <span style="background:{color}22;color:{color};font-size:0.7rem;font-weight:600;
+    <div style="margin-top:{SP_2};">
+        <span style="background:{color}22;color:{color};font-size:{FS_SM};font-weight:600;
                      padding:3px 10px;border-radius:20px;text-transform:uppercase;
                      letter-spacing:0.06em;">{label}</span>
     </div>
@@ -125,18 +156,18 @@ def composite_score_html(score: float, label: str, sizing: float, run_str: str) 
     sizing_pct = int(sizing * 100)
     return f"""
 <div style="background:{CARD};border:1px solid {BORDER};border-top:4px solid {color};
-            border-radius:14px;padding:28px 36px;text-align:center;margin-bottom:8px;">
-    <div style="color:{TEXT_DIM};font-size:0.72rem;text-transform:uppercase;
-                letter-spacing:0.1em;margin-bottom:14px;">COMPOSITE GATE SCORE</div>
+            border-radius:{RADIUS_LG};padding:{SP_8} {SP_9};text-align:center;margin-bottom:{SP_2};">
+    <div style="color:{TEXT_DIM};font-size:{FS_SM};text-transform:uppercase;
+                letter-spacing:0.1em;margin-bottom:{SP_4};">COMPOSITE GATE SCORE</div>
     <div style="color:{TEXT};font-family:'DM Mono','IBM Plex Mono',monospace;
-                font-size:4.5rem;font-weight:700;line-height:1;">{score:.0f}</div>
-    <div style="color:{TEXT_DIM};font-size:1rem;margin-top:2px;">/ 100</div>
-    <div style="margin-top:16px;">
-        <span style="background:{color}22;color:{color};font-size:0.875rem;font-weight:600;
+                font-size:{FS_5XL};font-weight:700;line-height:1;">{score:.0f}</div>
+    <div style="color:{TEXT_DIM};font-size:{FS_XL};margin-top:2px;">/ 100</div>
+    <div style="margin-top:{SP_4};">
+        <span style="background:{color}22;color:{color};font-size:{FS_MD};font-weight:600;
                      padding:7px 22px;border-radius:20px;text-transform:uppercase;
                      letter-spacing:0.06em;">{label}</span>
     </div>
-    <div style="margin-top:14px;color:{TEXT_MUTED};font-size:0.82rem;">
+    <div style="margin-top:{SP_4};color:{TEXT_MUTED};font-size:{FS_SM};">
         Deploy <strong style="color:{TEXT}">{sizing_pct}%</strong> of position budget
         &nbsp;·&nbsp; Last run: <strong style="color:{TEXT}">{run_str}</strong>
     </div>
@@ -145,15 +176,131 @@ def composite_score_html(score: float, label: str, sizing: float, run_str: str) 
 
 def section_header_html(title: str, subtitle: str = "") -> str:
     sub = (
-        f'<div style="color:{TEXT_DIM};font-size:0.82rem;margin-top:4px;">{subtitle}</div>'
+        f'<div style="color:{TEXT_DIM};font-size:{FS_SM};margin-top:{SP_1};">{subtitle}</div>'
         if subtitle else ""
     )
     return f"""
-<div style="margin:24px 0 14px;">
-    <div style="color:{TEXT};font-size:1.05rem;font-weight:600;
+<div style="margin:{SP_6} 0 {SP_4};">
+    <div style="color:{TEXT};font-size:{FS_XL};font-weight:600;
                 font-family:\'IBM Plex Sans\',system-ui,sans-serif;">{title}</div>
     {sub}
 </div>"""
+
+
+def ticker_hero_html(symbol: str, price: str, badge_label: str, badge_color: str, sub_label: str = "") -> str:
+    """Oversized ticker header (TradingAgents-style). badge_color is a hex color string."""
+    sub = (
+        f'<div style="color:{TEXT_DIM};font-size:{FS_SM};margin-top:{SP_1};'
+        f'font-family:\'DM Mono\',\'IBM Plex Mono\',monospace;">{sub_label}</div>'
+    ) if sub_label else ""
+    return f"""
+<div style="background:{CARD};border:1px solid {BORDER};border-top:4px solid {badge_color};
+            border-radius:{RADIUS_LG};padding:{SP_6} {SP_8};margin-bottom:{SP_5};">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+    <div>
+      <div style="color:{TEXT_DIM};font-size:{FS_2XS};text-transform:uppercase;
+                  letter-spacing:0.1em;margin-bottom:{SP_1};">TOP PICK</div>
+      <div style="color:{TEXT};font-family:\'DM Mono\',\'IBM Plex Mono\',monospace;
+                  font-size:{FS_4XL};font-weight:800;letter-spacing:-1px;line-height:1;">{symbol}</div>
+      {sub}
+    </div>
+    <div style="text-align:right;">
+      <div style="color:{TEXT};font-family:\'DM Mono\',\'IBM Plex Mono\',monospace;
+                  font-size:{FS_3XL};font-weight:700;line-height:1;">{price}</div>
+      <span style="display:inline-block;background:{badge_color}1f;border:1px solid {badge_color}59;
+                   color:{badge_color};font-size:{FS_SM};font-weight:700;padding:4px 14px;
+                   border-radius:999px;margin-top:{SP_2};letter-spacing:0.06em;">● {badge_label}</span>
+    </div>
+  </div>
+</div>"""
+
+
+def zone_kpi_grid_html(stop: float, support: float, entry: float, target: float, current_price: float, entry_range: tuple | None = None) -> str:
+    """4-card KPI grid for entry zone levels with % delta from current price.
+    entry_range=(lo, hi) shows the full zone band instead of the midpoint."""
+    def _pct(level: float) -> str:
+        if current_price and current_price > 0:
+            d = (level - current_price) / current_price * 100
+            sign = "+" if d >= 0 else ""
+            return f"{sign}{d:.1f}%"
+        return "—"
+
+    def _card(label: str, value: float, color: str, value_str: str | None = None) -> str:
+        display_val = value_str if value_str else f"${value:,.2f}"
+        font_size = FS_LG if value_str else "1.2rem"
+        return (
+            f'<div style="background:{CARD};border:1px solid {BORDER};border-top:2px solid {color};'
+            f'border-radius:{RADIUS};padding:{SP_4} {SP_4};text-align:center;">'
+            f'<div style="color:{TEXT_DIM};font-size:{FS_2XS};text-transform:uppercase;'
+            f'letter-spacing:0.09em;margin-bottom:{SP_1};">{label}</div>'
+            f'<div style="color:{TEXT};font-family:\'DM Mono\',\'IBM Plex Mono\',monospace;'
+            f'font-size:{font_size};font-weight:600;white-space:nowrap;">{display_val}</div>'
+            f'<div style="color:{color};font-size:{FS_SM};margin-top:{SP_1};font-weight:500;">{_pct(value)}</div>'
+            f'</div>'
+        )
+
+    entry_str = None
+    if entry_range:
+        lo, hi = entry_range
+        entry_str = f"${lo:,.2f} – ${hi:,.2f}"
+
+    cards = (
+        _card("STOP", stop, RED)
+        + _card("SUPPORT", support, AMBER)
+        + _card("ENTRY", entry, ACCENT, entry_str)
+        + _card("TARGET", target, BLUE)
+    )
+    return (
+        f'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));'
+        f'gap:{SP_2};margin-bottom:{SP_4};">{cards}</div>'
+    )
+
+
+def bull_bear_split_html(bull_items: list, bear_items: list) -> str:
+    """Two-column tinted card: green bull case + red bear case."""
+    def _rows(items: list, prefix: str, color: str) -> str:
+        if not items:
+            return f'<div style="color:{TEXT_DIM};font-size:{FS_SM};">—</div>'
+        return "".join(
+            f'<div style="color:{TEXT_MUTED};font-size:{FS_SM};line-height:1.55;margin-bottom:{SP_1};">'
+            f'<span style="color:{color};font-weight:600;">{prefix} </span>{item}</div>'
+            for item in items
+        )
+
+    return f"""
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:{SP_3};margin-bottom:{SP_4};">
+  <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.20);
+              border-radius:{RADIUS};padding:{SP_4} {SP_4};">
+    <div style="color:{GREEN};font-size:{FS_2XS};font-weight:700;text-transform:uppercase;
+                letter-spacing:0.09em;margin-bottom:{SP_2};">BULL CASE</div>
+    {_rows(bull_items, '+', GREEN)}
+  </div>
+  <div style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.20);
+              border-radius:{RADIUS};padding:{SP_4} {SP_4};">
+    <div style="color:{RED};font-size:{FS_2XS};font-weight:700;text-transform:uppercase;
+                letter-spacing:0.09em;margin-bottom:{SP_2};">BEAR CASE</div>
+    {_rows(bear_items, '−', RED)}
+  </div>
+</div>"""
+
+
+def risk_row_html(severity: str, title: str, description: str) -> str:
+    """Single risk row with severity dot. severity ∈ {'high','med','low'}."""
+    dot_color = {"high": RED, "med": AMBER, "low": BLUE}.get(severity.lower(), TEXT_DIM)
+    return (
+        f'<div style="display:flex;gap:{SP_3};align-items:flex-start;padding:{SP_2} {SP_4};'
+        f'background:{CARD};border:1px solid {BORDER};border-radius:{RADIUS_SM};margin-bottom:{SP_1};">'
+        f'<div style="min-width:58px;display:flex;align-items:center;gap:{SP_1};padding-top:2px;">'
+        f'<div style="width:7px;height:7px;border-radius:50%;background:{dot_color};flex-shrink:0;"></div>'
+        f'<span style="color:{dot_color};font-size:{FS_2XS};font-weight:700;text-transform:uppercase;'
+        f'letter-spacing:0.08em;">{severity.upper()}</span>'
+        f'</div>'
+        f'<div>'
+        f'<div style="color:{TEXT};font-size:{FS_SM};font-weight:600;margin-bottom:2px;">{title}</div>'
+        f'<div style="color:{TEXT_MUTED};font-size:{FS_SM};line-height:1.5;">{description}</div>'
+        f'</div>'
+        f'</div>'
+    )
 
 
 # ── Global CSS ─────────────────────────────────────────────────────────────────
@@ -240,16 +387,16 @@ body,
 p, .stMarkdown p {{ color: {TEXT_MUTED}; line-height: 1.6; }}
 [data-testid="stCaptionContainer"], .stCaption, small {{
     color: {TEXT_DIM} !important;
-    font-size: 0.78rem !important;
+    font-size: {FS_SM} !important;
 }}
 
 /* ── Sidebar text & nav links ───────────────────────────── */
 [data-testid="stSidebar"] * {{ color: {TEXT_MUTED}; }}
 [data-testid="stSidebarNavLink"] {{
-    border-radius: 8px;
+    border-radius: {RADIUS_SM};
     padding: 6px 12px;
-    font-size: 0.875rem;
-    transition: background 0.15s;
+    font-size: {FS_BASE};
+    transition: background {TRANS};
     color: {TEXT_DIM};
 }}
 [data-testid="stSidebarNavLink"]:hover {{
@@ -266,8 +413,8 @@ p, .stMarkdown p {{ color: {TEXT_MUTED}; line-height: 1.6; }}
 [data-testid="stMetric"] {{
     background: {CARD};
     border: 1px solid {BORDER};
-    border-radius: 10px;
-    padding: 16px 20px;
+    border-radius: {RADIUS};
+    padding: {SP_4} {SP_5};
 }}
 [data-testid="stMetricValue"] {{
     color: {TEXT} !important;
@@ -277,12 +424,12 @@ p, .stMarkdown p {{ color: {TEXT_MUTED}; line-height: 1.6; }}
 }}
 [data-testid="stMetricLabel"] > div {{
     color: {TEXT_DIM} !important;
-    font-size: 0.7rem !important;
+    font-size: {FS_XS} !important;
     text-transform: uppercase !important;
     letter-spacing: 0.08em !important;
 }}
 [data-testid="stMetricDelta"] {{
-    font-size: 0.78rem !important;
+    font-size: {FS_SM} !important;
 }}
 
 /* ── Buttons ──────────────────────────────────────────────── */
@@ -290,11 +437,11 @@ p, .stMarkdown p {{ color: {TEXT_MUTED}; line-height: 1.6; }}
     background: {CARD2};
     color: {TEXT};
     border: 1px solid {BORDER};
-    border-radius: 8px;
+    border-radius: {RADIUS_SM};
     font-family: 'IBM Plex Sans', system-ui, sans-serif;
     font-weight: 500;
-    transition: background 0.15s, border-color 0.15s;
-    font-size: 0.85rem;
+    transition: background {TRANS}, border-color {TRANS};
+    font-size: {FS_MD};
 }}
 .stButton > button:hover {{
     background: {BORDER};
@@ -307,16 +454,16 @@ p, .stMarkdown p {{ color: {TEXT_MUTED}; line-height: 1.6; }}
     color: #fff;
 }}
 .stButton > button[kind="primary"]:hover {{
-    background: #4f52d9;
-    border-color: #4f52d9;
+    background: #5254e0;
+    border-color: #5254e0;
 }}
 
 /* ── Forms ───────────────────────────────────────────────── */
 [data-testid="stForm"] {{
     background: {CARD};
     border: 1px solid {BORDER} !important;
-    border-radius: 12px;
-    padding: 20px;
+    border-radius: {RADIUS};
+    padding: {SP_5};
 }}
 .stTextInput input,
 .stNumberInput input,
@@ -324,7 +471,7 @@ p, .stMarkdown p {{ color: {TEXT_MUTED}; line-height: 1.6; }}
     background: {CARD2} !important;
     color: {TEXT} !important;
     border-color: {BORDER} !important;
-    border-radius: 8px !important;
+    border-radius: {RADIUS_SM} !important;
     font-family: 'IBM Plex Sans', system-ui, sans-serif !important;
 }}
 .stTextInput input:focus,
@@ -337,7 +484,7 @@ p, .stMarkdown p {{ color: {TEXT_MUTED}; line-height: 1.6; }}
     background: {CARD2} !important;
     color: {TEXT} !important;
     border-color: {BORDER} !important;
-    border-radius: 8px !important;
+    border-radius: {RADIUS_SM} !important;
 }}
 .stSelectbox svg {{ fill: {TEXT_DIM}; }}
 
@@ -345,7 +492,7 @@ p, .stMarkdown p {{ color: {TEXT_MUTED}; line-height: 1.6; }}
 [data-testid="stTabs"] [data-baseweb="tab-list"] {{
     background: {CARD};
     border-bottom: 1px solid {BORDER};
-    border-radius: 10px 10px 0 0;
+    border-radius: {RADIUS} {RADIUS} 0 0;
     gap: 2px;
     padding: 6px 8px 0;
     overflow-x: auto;
@@ -353,9 +500,9 @@ p, .stMarkdown p {{ color: {TEXT_MUTED}; line-height: 1.6; }}
 [data-testid="stTabs"] [data-baseweb="tab"] {{
     background: transparent !important;
     color: {TEXT_DIM} !important;
-    border-radius: 8px 8px 0 0 !important;
+    border-radius: {RADIUS_SM} {RADIUS_SM} 0 0 !important;
     font-family: 'IBM Plex Sans', system-ui, sans-serif;
-    font-size: 0.875rem;
+    font-size: {FS_BASE};
     font-weight: 500;
     white-space: nowrap;
     flex-shrink: 0;
@@ -370,60 +517,66 @@ p, .stMarkdown p {{ color: {TEXT_MUTED}; line-height: 1.6; }}
 [data-testid="stExpander"] {{
     background: {CARD};
     border: 1px solid {BORDER} !important;
-    border-radius: 10px !important;
+    border-radius: {RADIUS} !important;
     overflow: hidden;
 }}
 [data-testid="stExpander"] summary {{
     color: {TEXT_MUTED} !important;
     font-weight: 500;
-    font-size: 0.875rem;
-    padding: 10px 14px;
+    font-size: {FS_BASE};
+    padding: {SP_2} {SP_4};
+}}
+
+@media (prefers-reduced-motion: reduce) {{
+    *, *::before, *::after {{
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }}
 }}
 </style>"""
 
 # Part 2 — injected separately to stay under Streamlit 1.57's markdown HTML-block limit.
 _CSS2 = f"""<style>
-[data-testid="stDataFrame"] {{ border: 1px solid {BORDER}; border-radius: 10px; overflow: hidden; }}
-[data-testid="stAlert"] {{ border-radius: 10px !important; }}
+[data-testid="stDataFrame"] {{ border: 1px solid {BORDER}; border-radius: {RADIUS}; overflow: hidden; }}
+[data-testid="stAlert"] {{ border-radius: {RADIUS} !important; }}
 hr {{ border-color: {BORDER} !important; opacity: 1; }}
-[data-baseweb="popover"] [data-baseweb="menu"] {{ background: {CARD2} !important; border: 1px solid {BORDER} !important; border-radius: 8px !important; }}
+[data-baseweb="popover"] [data-baseweb="menu"] {{ background: {CARD2} !important; border: 1px solid {BORDER} !important; border-radius: {RADIUS_SM} !important; }}
 [data-baseweb="menu"] li {{ color: {TEXT_MUTED} !important; }}
 [data-baseweb="menu"] li:hover {{ background: {BORDER} !important; color: {TEXT} !important; }}
 ::-webkit-scrollbar {{ width: 5px; height: 5px; }}
 ::-webkit-scrollbar-track {{ background: {CARD}; }}
 ::-webkit-scrollbar-thumb {{ background: {BORDER}; border-radius: 3px; }}
-::-webkit-scrollbar-thumb:hover {{ background: #363940; }}
-[data-testid="stPageLink"] a {{ background: {CARD}; border: 1px solid {BORDER}; border-radius: 8px; color: {TEXT_MUTED}; padding: 10px 16px; display: block; text-decoration: none; font-size: 0.875rem; transition: border-color 0.15s, color 0.15s; }}
+::-webkit-scrollbar-thumb:hover {{ background: {CARD2}; }}
+[data-testid="stPageLink"] a {{ background: {CARD}; border: 1px solid {BORDER}; border-radius: {RADIUS_SM}; color: {TEXT_MUTED}; padding: {SP_2} {SP_4}; display: block; text-decoration: none; font-size: {FS_BASE}; transition: border-color {TRANS}, color {TRANS}; }}
 [data-testid="stPageLink"] a:hover {{ border-color: {ACCENT}; color: {TEXT}; }}
 </style>
 """
 
 
-# Part 3 — sidebar chat widget overrides (separate chunk; do not merge into _CSS or _CSS2).
+# Part 3 — analyst chat bubble styles (used in st.dialog, not sidebar).
 _CSS3 = f"""<style>
-/* ── Analyst sidebar chat: override [data-testid="stSidebar"] * wildcard ── */
-[data-testid="stSidebar"] .sl-chat-msg {{
+.sl-chat-msg {{
     color: {TEXT} !important;
-    font-size: 0.855rem;
+    font-size: {FS_MD};
     line-height: 1.55;
     margin-bottom: 2px;
     word-wrap: break-word;
     white-space: pre-wrap;
 }}
-[data-testid="stSidebar"] .sl-chat-meta {{
+.sl-chat-meta {{
     color: {TEXT_DIM} !important;
-    font-size: 0.68rem;
-    margin-bottom: 10px;
+    font-size: {FS_XS};
+    margin-bottom: {SP_2};
     line-height: 1.4;
 }}
-[data-testid="stSidebar"] .sl-chat-bubble {{
+.sl-chat-bubble {{
     background: {CARD};
     border: 1px solid {BORDER};
-    border-radius: 8px;
-    padding: 8px 10px;
+    border-radius: {RADIUS_SM};
+    padding: {SP_2} {SP_2};
     margin-bottom: 2px;
 }}
-[data-testid="stSidebar"] .sl-chat-bubble-user {{
+.sl-chat-bubble-user {{
     background: {CARD2};
     border-color: {ACCENT}44;
 }}
@@ -431,8 +584,124 @@ _CSS3 = f"""<style>
 """
 
 
+# Part 4 — floating chat button + sidebar section labels + header bar.
+_CSS4 = f"""<style>
+/* ── Floating analyst chat button ───────────────────────────── */
+/* Targets st.button(help="Open Analyst Chat") wrapper so it floats */
+div[data-testid="stButton"]:has(button[title="Open Analyst Chat"]) {{
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+}}
+div[data-testid="stButton"]:has(button[title="Open Analyst Chat"]) button {{
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    background: linear-gradient(135deg, {PURPLE}, #22c1ff) !important;
+    border: none !important;
+    color: #fff !important;
+    font-size: 1.4rem !important;
+    padding: 0 !important;
+    box-shadow: 0 8px 24px rgba(124,106,247,.45);
+    transition: transform {TRANS}, box-shadow {TRANS};
+}}
+div[data-testid="stButton"]:has(button[title="Open Analyst Chat"]) button:hover {{
+    transform: scale(1.07);
+    box-shadow: 0 12px 32px rgba(124,106,247,.6);
+}}
+/* ── Sidebar section eyebrow labels via CSS :before ────────── */
+/* Home = first nav item → WORKSPACE label */
+[data-testid="stSidebarNavItems"] > li:first-child::before {{
+    content: "WORKSPACE";
+    display: block;
+    color: {TEXT_DIM};
+    font-size: {FS_2XS};
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    padding: {SP_4} {SP_4} {SP_1};
+    line-height: 1;
+}}
+/* Second item (first page) → BROWSE label */
+[data-testid="stSidebarNavItems"] > li:nth-child(2)::before {{
+    content: "BROWSE";
+    display: block;
+    color: {TEXT_DIM};
+    font-size: {FS_2XS};
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.10em;
+    padding: {SP_4} {SP_4} {SP_1};
+    line-height: 1;
+}}
+/* ── Header topbar pill + ⌘K button ─────────────────────────── */
+.sl-topbar-pill {{
+    background: {CARD};
+    border: 1px solid {BORDER};
+    border-radius: {RADIUS_XS};
+    padding: {SP_1} {SP_2};
+    color: {TEXT_DIM};
+    font-size: {FS_SM};
+    font-family: 'DM Mono', 'IBM Plex Mono', monospace;
+}}
+div[data-testid="stButton"]:has(button[title="Swing Lab page guide"]) button {{
+    background: {CARD} !important;
+    border: 1px solid {BORDER} !important;
+    color: {TEXT_DIM} !important;
+    font-size: {FS_SM} !important;
+    border-radius: {RADIUS_XS} !important;
+    font-family: 'IBM Plex Sans', system-ui, sans-serif !important;
+    padding: 5px 10px !important;
+}}
+div[data-testid="stButton"]:has(button[title="Swing Lab page guide"]) button:hover {{
+    border-color: {ACCENT} !important;
+    color: {TEXT_MUTED} !important;
+    background: {CARD2} !important;
+}}
+</style>
+"""
+
+
+@st.dialog("Find on Swing Lab", width="small")
+def _topbar_help_dialog() -> None:
+    st.markdown(f"""
+<div style="font-size:{FS_MD};line-height:1.8;color:{TEXT_MUTED};">
+<strong style="color:{TEXT};">Pages</strong><br>
+· <strong>Gate</strong> — 6-signal macro score (VIX, SPY trend, HYG, yield curve, breadth, VIX term)<br>
+· <strong>Scanner</strong> — top-20 momentum picks ranked within sector<br>
+· <strong>Review</strong> — per-symbol Claude fundamental analysis<br>
+· <strong>Recommendation</strong> — synthesized top-3 picks with entry zones<br>
+· <strong>Trade Log</strong> — open/close positions with thesis and exit notes<br>
+· <strong>Postmortem</strong> — Claude pattern analysis across closed trades<br>
+<br><strong style="color:{TEXT};">CLI commands</strong><br>
+<code>uv run swing-lab gate · scan · review · log · rebalance</code>
+</div>""", unsafe_allow_html=True)
+
+
+def render_topbar(run_label: str = "") -> None:
+    """Render the header bar with optional run-timestamp pill and ⌘K help button."""
+    c_left, c_right = st.columns([5, 1])
+    if run_label:
+        c_left.markdown(
+            f'<div style="padding-top:4px;">'
+            f'<span class="sl-topbar-pill">{run_label}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    with c_right:
+        if st.button("🔎 ⌘K", key="sl_topbar_search_btn",
+                     help="Swing Lab page guide", use_container_width=True):
+            _topbar_help_dialog()
+    st.markdown(
+        f'<hr style="border:none;border-top:1px solid {BORDER};margin:4px 0 18px;">',
+        unsafe_allow_html=True,
+    )
+
+
 def inject() -> None:
     """Inject the Warm Graphite CSS theme. Call once per page after set_page_config()."""
     st.markdown(_CSS, unsafe_allow_html=True)
     st.markdown(_CSS2, unsafe_allow_html=True)
     st.markdown(_CSS3, unsafe_allow_html=True)
+    st.markdown(_CSS4, unsafe_allow_html=True)

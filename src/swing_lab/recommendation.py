@@ -4,13 +4,65 @@ import os
 import time
 import anthropic
 import pandas as pd
-from swing_lab.config import MAX_POSITION_PCT, MODEL, RECOMMEND_TOP_N, RECOMMEND_RED_FLAG_MAX
+from swing_lab.config import DATA_DIR, MAX_POSITION_PCT, MODEL, RECOMMEND_TOP_N, RECOMMEND_RED_FLAG_MAX
+
+_DIAG_FILE = DATA_DIR / ".cache_ids.json"
+
+
+def _load_cache_id(key: str) -> str | None:
+    try:
+        return json.loads(_DIAG_FILE.read_text()).get(key)
+    except Exception:
+        return None
+
+
+def _save_cache_id(key: str, msg_id: str) -> None:
+    try:
+        try:
+            data = json.loads(_DIAG_FILE.read_text())
+        except Exception:
+            data = {}
+        data[key] = msg_id
+        _DIAG_FILE.write_text(json.dumps(data))
+    except Exception:
+        pass
 
 _SYSTEM_PROMPT = (
     "You are a quantitative momentum trader synthesizing a final trade recommendation. "
     "Be direct and specific. Focus on risk-adjusted conviction given the macro regime "
     "and the relative quality of the candidate set."
 )
+
+_RECOMMENDATION_TOOL = {
+    "name": "submit_recommendation",
+    "description": "Submit the synthesized trade recommendation with structured price levels.",
+    "input_schema": {
+        "type": "object",
+        "required": [
+            "rationale", "key_risks", "exit_signals",
+            "entry_low", "entry_high", "support", "stop", "target",
+        ],
+        "properties": {
+            "rationale":    {"type": "string",
+                             "description": "2-3 sentences: why this is the strongest trade right now."},
+            "key_risks":    {"type": "array", "items": {"type": "string"},
+                             "minItems": 2, "maxItems": 4},
+            "exit_signals": {"type": "array", "items": {"type": "string"},
+                             "minItems": 2, "maxItems": 4,
+                             "description": "Behavioral/qualitative exit conditions only — NO price levels."},
+            "entry_low":    {"type": "number",
+                             "description": "Lower bound of the entry zone in dollars."},
+            "entry_high":   {"type": "number",
+                             "description": "Upper bound of the entry zone in dollars."},
+            "support":      {"type": "number",
+                             "description": "Support shelf price below entry in dollars."},
+            "stop":         {"type": "number",
+                             "description": "Hard stop-loss price in dollars. Must be below support."},
+            "target":       {"type": "number",
+                             "description": "Realistic profit target price in dollars (10–25% upside from entry)."},
+        },
+    },
+}
 
 
 def select_candidates(
@@ -61,6 +113,11 @@ def compose_runner_up(review_row) -> dict:
         "risks": flags[:3],
         "exit_triggers": exit_triggers,
         "entry_zone": "",
+        "entry_low":  None,
+        "entry_high": None,
+        "support":    None,
+        "stop":       None,
+        "target":     None,
         "is_synthesized": False,
         "cache_hit": None,
     }
@@ -149,25 +206,26 @@ Runner-ups (ranked #2 and #3):
 Claude's prior analysis of {symbol}:
 {top_pick_row.get("claude_summary", "")}
 
-Provide:
-1. A 2-3 sentence synthesized rationale — why is this the strongest trade among candidates right now?
-2. 2-4 specific key risks, each on its own line starting with "- "
-3. 2-4 exit signals — observable conditions (NOT price targets) that would tell you the thesis is failing and it's time to exit. Think chart behavior, earnings results, macro shifts, or sector signals. Each on its own line starting with "EXIT: "
-4. A specific entry price or tight range in dollars (e.g. "$142–$145"). Current price is {price_str} — anchor to that and suggest whether to buy at market, on a slight pullback to a support level, or on a breakout above a resistance level. Be specific with numbers. One line starting with "Entry zone: "
+Call submit_recommendation with your synthesized analysis. Price levels must be consistent: stop < support < entry_low ≤ entry_high < target. Target should reflect realistic 10–25% upside given momentum and macro conditions.
 """
 
+    prev_id = _load_cache_id("recommend")
     for attempt in range(5):
         try:
-            response = client.messages.create(
+            response = client.beta.messages.create(
                 model=MODEL,
-                max_tokens=700,
+                max_tokens=2000,
+                betas=["cache-diagnosis-2026-04-07"],
                 thinking={"type": "adaptive"},
+                tools=[_RECOMMENDATION_TOOL],
+                tool_choice={"type": "tool", "name": "submit_recommendation"},
                 system=[{
                     "type": "text",
                     "text": _SYSTEM_PROMPT,
                     "cache_control": {"type": "ephemeral"},
                 }],
                 messages=[{"role": "user", "content": user_msg}],
+                diagnostics={"previous_message_id": prev_id},
             )
             break
         except anthropic.APIStatusError as exc:
@@ -178,36 +236,43 @@ Provide:
             else:
                 raise
 
+    _save_cache_id("recommend", response.id)
     cache_read = getattr(response.usage, "cache_read_input_tokens", 0) or 0
-    if cache_read > 0:
+    diag = getattr(response, "diagnostics", None)
+    if diag:
+        reason = getattr(diag, "cache_miss_reason", None)
+        status = f"miss ({reason})" if reason else "hit"
+        print(f"  [{symbol} synthesis cache] {status}")
+    elif cache_read > 0:
         print(f"  [{symbol} synthesis: cache hit — {cache_read:,} tokens saved]")
     else:
         print(f"  [{symbol} synthesis: cache miss — system prompt cached for next run]")
 
-    raw = next((b.text for b in response.content if hasattr(b, "text")), "")
+    tool_block = next((b for b in response.content if getattr(b, "type", "") == "tool_use"), None)
+    if tool_block is None:
+        raise RuntimeError(f"{symbol}: model did not call submit_recommendation — cannot produce recommendation")
+    args = tool_block.input
 
-    rationale_lines = []
-    risks = []
-    exit_triggers = []
-    entry_zone = ""
-    for line in raw.split("\n"):
-        line = line.strip()
-        if not line:
-            continue
-        if line.lower().startswith("entry zone:"):
-            entry_zone = line.split(":", 1)[1].strip()
-        elif line.upper().startswith("EXIT:"):
-            exit_triggers.append(line.split(":", 1)[1].strip())
-        elif line.startswith("- "):
-            risks.append(line[2:].strip())
-        elif not risks and not exit_triggers and not entry_zone:
-            rationale_lines.append(line)
+    entry_low  = float(args["entry_low"])
+    entry_high = float(args["entry_high"])
+    support    = float(args["support"])
+    stop       = float(args["stop"])
+    target     = float(args["target"])
+    entry_zone_text = (
+        f"${entry_low:.2f}–${entry_high:.2f}; "
+        f"support at ${support:.2f}; stop below ${stop:.2f}; target ${target:.2f}"
+    )
 
     return {
-        "rationale": " ".join(rationale_lines),
-        "risks": risks,
-        "exit_triggers": exit_triggers,
-        "entry_zone": entry_zone,
+        "rationale": args.get("rationale", ""),
+        "risks": args.get("key_risks") or [],
+        "exit_triggers": args.get("exit_signals") or [],
+        "entry_zone": entry_zone_text,
+        "entry_low":  entry_low,
+        "entry_high": entry_high,
+        "support":    support,
+        "stop":       stop,
+        "target":     target,
         "is_synthesized": True,
         "cache_hit": 1 if cache_read > 0 else 0,
         "price_at_scan": current_price,
@@ -271,6 +336,11 @@ def generate_recommendations(
             "risks_json": json.dumps(synthesis.get("risks") or flags),
             "exit_triggers_json": json.dumps(synthesis.get("exit_triggers") or []),
             "entry_zone": synthesis.get("entry_zone", ""),
+            "entry_low":  synthesis.get("entry_low"),
+            "entry_high": synthesis.get("entry_high"),
+            "support":    synthesis.get("support"),
+            "stop":       synthesis.get("stop"),
+            "target":     synthesis.get("target"),
             "is_synthesized": synthesis.get("is_synthesized", False),
             "cache_hit": synthesis.get("cache_hit"),
             "price_at_scan": price,

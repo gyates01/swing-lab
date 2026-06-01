@@ -17,6 +17,8 @@
 | M8 — Trade Recommendation Engine | ✅ Complete | 2026-05-26 |
 | M9 — Trade Outcome Feedback Loop | ✅ Complete | 2026-05-27 |
 | M10 — Conversational Analyst Agent | ⏳ Steps 1–8 complete, step 9 pending | 2026-05-28 |
+| Automation — Scheduled gate/scan/review | ✅ Complete | 2026-05-30 |
+| Chart — Recommendation level labels | ✅ Complete | 2026-05-30 |
 
 ---
 

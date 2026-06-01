@@ -4,8 +4,10 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from swing_lab.dashboard.lib import load_scans, load_scans_with_reviews, load_reviews, fmt_local_time
+import re as _re
 from swing_lab.dashboard.theme import (
-    inject, make_fig, metric_html, section_header_html,
+    inject, render_topbar, make_fig, metric_html, section_header_html,
+    bull_bear_split_html,
     ACCENT, GREEN, RED, AMBER, PURPLE, BORDER, CARD, CARD2,
     TEXT, TEXT_DIM, TEXT_MUTED,
 )
@@ -16,6 +18,7 @@ st.set_page_config(page_title="Claude Review — Swing Lab", layout="wide")
 inject()
 st.session_state["current_page"] = "review"
 sidebar_chat.render()
+render_topbar()
 
 st.markdown(f"""
 <div style="margin-bottom:6px;">
@@ -58,10 +61,13 @@ if _last_review_scan_ids:
         _last_review_ts = fmt_local_time(_latest_review.iloc[0]["run_at"])
 
 with st.expander("Run a new Claude review", expanded=False):
-    st.warning(
-        f"Runs ~6 Claude Opus API calls (costs tokens). "
-        f"Last review: **{_last_review_ts}**. "
-        f"Also runs a fresh scan first (~2–3 min total)."
+    st.markdown(
+        f'<div style="background:{AMBER}11;border:1px solid {AMBER}44;border-radius:8px;'
+        f'padding:10px 14px;margin-bottom:10px;color:{TEXT_MUTED};font-size:0.82rem;">'
+        f'~6 Claude Opus API calls &nbsp;·&nbsp; Last: <strong style="color:{TEXT}">{_last_review_ts}</strong>'
+        f' &nbsp;·&nbsp; Also runs a fresh scan first (~2–3 min total).'
+        f'</div>',
+        unsafe_allow_html=True,
     )
     if st.button("Run new review", type="primary", key="run_review_btn"):
         scan_bar = st.progress(0, text="Phase 1 — Scanning S&P 500…")
@@ -205,7 +211,7 @@ if top is not None:
     if flag_note:
         _extra += f'<p style="color:{AMBER};margin:0;line-height:1.65;">{flag_note}</p>'
     st.markdown(
-        f'<div style="background:{CARD};border:1px solid {BORDER};border-left:3px solid {ACCENT};'
+        f'<div style="background:{CARD};border:1px solid {BORDER};border-top:2px solid {ACCENT};'
         f'border-radius:10px;padding:18px 22px;margin-bottom:4px;">'
         f'<div style="color:{TEXT_DIM};font-size:0.68rem;text-transform:uppercase;'
         f'letter-spacing:0.09em;margin-bottom:10px;">WHAT THIS REVIEW MEANS</div>'
@@ -366,16 +372,13 @@ for _, row in reviews.iterrows():
                 sub="60% quant + 40% Claude", accent_color=blend_color,
             ), unsafe_allow_html=True)
 
-        st.markdown(f"<p style='margin-top:12px;color:{TEXT_MUTED};'>{summary}</p>",
-                    unsafe_allow_html=True)
-
-        if red_flags:
-            flag_label = f"**{flag_count} red flags** — consider skipping:" if flag_count >= 3 else f"**{flag_count} red flag(s):**"
-            if flag_count >= 3:
-                st.error(flag_label)
-            else:
-                st.warning(flag_label)
-            for flag in red_flags:
-                st.markdown(f"- {flag}")
-        else:
-            st.success("No red flags identified.")
+        # ── Bull / Bear split ──────────────────────────────────────────────
+        bull_sentences = [
+            s.strip()
+            for s in _re.split(r'(?<=[.!?])\s+', summary)
+            if len(s.strip()) > 15
+        ][:3]
+        st.markdown(
+            bull_bear_split_html(bull_sentences, red_flags or ["No flags identified"]),
+            unsafe_allow_html=True,
+        )

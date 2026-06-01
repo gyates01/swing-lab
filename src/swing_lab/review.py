@@ -67,6 +67,7 @@ def review_candidates(top_n_df: pd.DataFrame, progress=None) -> pd.DataFrame:
 
     results = []
     total = len(candidates)
+    prev_id: str | None = None
 
     for i, (_, row) in enumerate(candidates.iterrows(), start=1):
         symbol = row["symbol"]
@@ -86,9 +87,10 @@ def review_candidates(top_n_df: pd.DataFrame, progress=None) -> pd.DataFrame:
                 dq_note += f"\nMissing fields (treat as unknown, do not assume): {', '.join(missing)}"
 
         try:
-            response = client.messages.create(
+            response = client.beta.messages.create(
                 model=MODEL,
                 max_tokens=1024,
+                betas=["cache-diagnosis-2026-04-07"],
                 system=[
                     {
                         "type": "text",
@@ -105,13 +107,20 @@ def review_candidates(top_n_df: pd.DataFrame, progress=None) -> pd.DataFrame:
                         ),
                     }
                 ],
+                diagnostics={"previous_message_id": prev_id},
             )
+            prev_id = response.id
 
-            # Check for cache hit
+            # Check for cache hit and diagnostics
             usage = getattr(response, "usage", None)
             if usage is not None:
                 cache_read = getattr(usage, "cache_read_input_tokens", 0) or 0
-                if cache_read > 0:
+                diag = getattr(response, "diagnostics", None)
+                if diag:
+                    reason = getattr(diag, "cache_miss_reason", None)
+                    status = f"miss ({reason})" if reason else "hit"
+                    print(f"  [cache diag] {symbol}: {status}")
+                elif cache_read > 0:
                     print("  [cache hit]")
 
             raw_text = response.content[0].text

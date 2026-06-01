@@ -227,12 +227,13 @@ def run_turn(
     history: list[dict],
     user_msg: str,
     snapshot: dict,
+    prev_message_id: str | None = None,
 ) -> tuple[str, list[dict], dict]:
     """Run one conversational turn (may invoke multiple tool-call rounds).
 
     Returns:
         (assistant_text, updated_history, telemetry)
-        telemetry = {"cache_hit": bool, "tokens_saved": int, "tool_calls": list[str]}
+        telemetry = {"cache_hit": bool, "tokens_saved": int, "tool_calls": list[str], "message_id": str|None}
     """
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -240,29 +241,38 @@ def run_turn(
 
     client = anthropic.Anthropic(api_key=api_key)
     messages = list(history) + [{"role": "user", "content": user_msg}]
+    # Stable persona cached; snapshot excluded from cache (changes every 5 min)
     system = [
         {
             "type": "text",
-            "text": _SYSTEM_PROMPT + "\n\n" + _snapshot_to_system_text(snapshot),
+            "text": _SYSTEM_PROMPT,
             "cache_control": {"type": "ephemeral"},
-        }
+        },
+        {
+            "type": "text",
+            "text": _snapshot_to_system_text(snapshot),
+        },
     ]
 
     tool_calls_made: list[str] = []
     assistant_text = ""
     cache_read = 0
+    last_message_id: str | None = None
+    is_first_call = True
 
     for _turn in range(ANALYST_MAX_TURNS):
         response = None
         for attempt in range(5):
             try:
-                response = client.messages.create(
+                response = client.beta.messages.create(
                     model=MODEL,
                     max_tokens=2048,
+                    betas=["cache-diagnosis-2026-04-07"],
                     thinking={"type": "adaptive"},
                     system=system,
                     tools=TOOLS,
                     messages=messages,
+                    diagnostics={"previous_message_id": prev_message_id if is_first_call else last_message_id},
                 )
                 break
             except anthropic.APIStatusError as exc:
@@ -277,6 +287,14 @@ def run_turn(
                     raise
 
         cache_read += getattr(response.usage, "cache_read_input_tokens", 0) or 0
+        last_message_id = response.id
+        if is_first_call:
+            diag = getattr(response, "diagnostics", None)
+            if diag:
+                reason = getattr(diag, "cache_miss_reason", None)
+                status = f"miss ({reason})" if reason else "hit"
+                print(f"  [analyst cache] {status}", flush=True)
+        is_first_call = False
 
         if response.stop_reason == "end_turn":
             text_parts = [b.text for b in response.content if hasattr(b, "text")]
@@ -307,5 +325,6 @@ def run_turn(
         "cache_hit": cache_read > 0,
         "tokens_saved": cache_read,
         "tool_calls": tool_calls_made,
+        "message_id": last_message_id,
     }
     return assistant_text, _serialize_messages(messages), telemetry

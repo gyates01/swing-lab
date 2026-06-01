@@ -4,7 +4,28 @@ import os
 import time
 import anthropic
 
-from swing_lab.config import MODEL
+from swing_lab.config import DATA_DIR, MODEL
+
+_DIAG_FILE = DATA_DIR / ".cache_ids.json"
+
+
+def _load_cache_id(key: str) -> str | None:
+    try:
+        return json.loads(_DIAG_FILE.read_text()).get(key)
+    except Exception:
+        return None
+
+
+def _save_cache_id(key: str, msg_id: str) -> None:
+    try:
+        try:
+            data = json.loads(_DIAG_FILE.read_text())
+        except Exception:
+            data = {}
+        data[key] = msg_id
+        _DIAG_FILE.write_text(json.dumps(data))
+    except Exception:
+        pass
 
 _SYSTEM_PROMPT = (
     "You are a trading coach analyzing a student's recent swing trades. "
@@ -91,11 +112,13 @@ def analyze_trades_with_context(trade_rows: list[dict]) -> dict:
         "and what I should specifically watch in future recommendations."
     )
 
+    prev_id = _load_cache_id("postmortem")
     for attempt in range(5):
         try:
-            response = client.messages.create(
+            response = client.beta.messages.create(
                 model=MODEL,
                 max_tokens=1500,
+                betas=["cache-diagnosis-2026-04-07"],
                 thinking={"type": "adaptive"},
                 system=[{
                     "type": "text",
@@ -103,6 +126,7 @@ def analyze_trades_with_context(trade_rows: list[dict]) -> dict:
                     "cache_control": {"type": "ephemeral"},
                 }],
                 messages=[{"role": "user", "content": user_msg}],
+                diagnostics={"previous_message_id": prev_id},
             )
             break
         except anthropic.APIStatusError as exc:
@@ -113,8 +137,14 @@ def analyze_trades_with_context(trade_rows: list[dict]) -> dict:
             else:
                 raise
 
+    _save_cache_id("postmortem", response.id)
     cache_read = getattr(response.usage, "cache_read_input_tokens", 0) or 0
-    if cache_read > 0:
+    diag = getattr(response, "diagnostics", None)
+    if diag:
+        reason = getattr(diag, "cache_miss_reason", None)
+        status = f"miss ({reason})" if reason else "hit"
+        print(f"  [postmortem cache] {status}")
+    elif cache_read > 0:
         print(f"  [postmortem: cache hit — {cache_read:,} tokens saved]")
     else:
         print(f"  [postmortem: cache miss — system prompt cached for next run]")

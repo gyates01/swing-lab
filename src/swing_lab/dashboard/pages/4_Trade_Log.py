@@ -7,7 +7,7 @@ from swing_lab.dashboard.lib import (
     load_trade_outcome_context, fmt_local_time,
 )
 from swing_lab.dashboard.theme import (
-    inject, metric_html, section_header_html,
+    inject, render_topbar, metric_html, section_header_html,
     ACCENT, GREEN, RED, AMBER, BORDER, CARD, CARD2,
     TEXT, TEXT_DIM, TEXT_MUTED,
 )
@@ -15,12 +15,7 @@ from swing_lab.tradelog import open_trade, close_trade, edit_trade, delete_trade
 from swing_lab.db import init_db
 from swing_lab.config import OUTCOME_THESIS_OPTIONS, OUTCOME_DRIVER_OPTIONS
 from swing_lab.dashboard import sidebar_chat
-
-
-@st.cache_data(ttl=300)
-def _fetch_history(symbol: str, period: str = "1y", interval: str = "1d"):
-    import yfinance as yf
-    return yf.Ticker(symbol).history(period=period, interval=interval)
+from swing_lab.dashboard.charts import fetch_history as _fetch_history, candle_chart as _candle_chart
 
 
 def _position_data(symbol: str) -> dict:
@@ -52,6 +47,40 @@ _METRIC_OPTIONS = [
     "Total return",
     "Total % change",
 ]
+
+
+def _market_status() -> tuple[str, str, str]:
+    """Return (key, label, color) based on US Eastern market hours.
+    key: 'live' | 'pre' | 'post' | 'closed'
+    """
+    from datetime import datetime, time as dtime
+    try:
+        from zoneinfo import ZoneInfo
+        et = ZoneInfo("America/New_York")
+    except ImportError:
+        import pytz
+        et = pytz.timezone("America/New_York")
+    now = datetime.now(et)
+    if now.weekday() >= 5:
+        return "closed", "Closed", TEXT_DIM
+    t = now.time()
+    if t < dtime(4, 0):
+        return "closed", "Closed", TEXT_DIM
+    elif t < dtime(9, 30):
+        return "pre", "Pre-market", AMBER
+    elif t <= dtime(16, 0):
+        return "live", "Live", GREEN
+    elif t <= dtime(20, 0):
+        return "post", "After-hours", AMBER
+    return "closed", "Closed", TEXT_DIM
+
+
+def _status_badge_html(label: str, color: str) -> str:
+    return (
+        f'<span style="background:{color}22;color:{color};font-size:0.6rem;font-weight:600;'
+        f'padding:1px 7px;border-radius:10px;text-transform:uppercase;'
+        f'letter-spacing:0.06em;vertical-align:middle;">{label}</span>'
+    )
 
 
 def _fmt_metric(key: str, pdata: dict, shares: float, entry_price: float | None) -> tuple[str, str]:
@@ -97,96 +126,37 @@ def _fmt_metric(key: str, pdata: dict, shares: float, entry_price: float | None)
     return "—", TEXT_DIM
 
 
-def _sparkline(symbol: str, entry_price: float | None, entry_date: str,
-               pdata: dict, height: int = 100):
-    """Robinhood-style sparkline. Color = today's daily direction. Period grows with trade age."""
-    import plotly.graph_objects as go
-    from datetime import timedelta
-    try:
-        entry_dt = pd.Timestamp(entry_date[:10]).tz_localize("UTC")
-        days_open = (pd.Timestamp.now(tz="UTC") - entry_dt).days
-
-        if days_open == 0:
-            hist = _fetch_history(symbol, "1d", "5m")
-            if hist is None or hist.empty:
-                hist = _fetch_history(symbol, "5d", "60m")
-            hover_fmt = "%{x|%H:%M}: $%{y:,.2f}<extra></extra>"
-        elif days_open <= 4:
-            hist = _fetch_history(symbol, "5d", "60m")
-            hover_fmt = "%{x|%b %d %H:%M}: $%{y:,.2f}<extra></extra>"
-        elif days_open <= 13:
-            hist = _fetch_history(symbol, "1mo", "1d")
-            hover_fmt = "%{x|%b %d}: $%{y:,.2f}<extra></extra>"
-        else:
-            hist = _fetch_history(symbol, "1y", "1d")
-            cutoff = entry_dt - timedelta(days=14)
-            hist = hist[hist.index >= cutoff]
-            hover_fmt = "%{x|%b %d}: $%{y:,.2f}<extra></extra>"
-
-        if hist is None or hist.empty:
-            return None
-
-        prices = hist["Close"]
-        # Color from entry price: green if current >= entry, red if below
-        current = pdata.get("current")
-        is_up = (not entry_price or entry_price == 0 or not current or current >= entry_price)
-        line_color = GREEN if is_up else RED
-        fill_color = "rgba(34,197,94,0.10)" if is_up else "rgba(239,68,68,0.10)"
-
-        fig = go.Figure()
-        baseline = float(prices.min()) * 0.998
-        fig.add_trace(go.Scatter(
-            x=hist.index, y=[baseline] * len(hist),
-            mode="lines", line=dict(width=0),
-            hoverinfo="skip", showlegend=False,
-        ))
-        fig.add_trace(go.Scatter(
-            x=hist.index, y=prices,
-            mode="lines",
-            line=dict(color=line_color, width=1.5),
-            fill="tonexty", fillcolor=fill_color,
-            hovertemplate=hover_fmt,
-            showlegend=False,
-        ))
-
-        if entry_price and entry_price > 0 and days_open > 0:
-            fig.add_hline(
-                y=entry_price,
-                line=dict(color="rgba(255,255,255,0.25)", dash="dot", width=1),
-            )
-
-        fig.update_layout(
-            height=height,
-            margin=dict(l=0, r=0, t=0, b=0),
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(visible=False, showgrid=False),
-            yaxis=dict(visible=False, showgrid=False),
-        )
-        return fig
-    except Exception:
-        import traceback
-        traceback.print_exc()
-        return None
-
 st.set_page_config(page_title="Trade Log — Swing Lab", layout="wide")
 inject()
 st.markdown(
-    "<style>[data-testid='stPopover'] button svg { display: none !important; }"
-    "[data-testid='stPopover'] button { padding: 2px 8px !important; }</style>",
+    "<style>"
+    "[data-testid='stPopover'] button svg { display: none !important; }"
+    "[data-testid='stPopover'] button { padding: 2px 8px !important; }"
+    "@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }"
+    "</style>",
     unsafe_allow_html=True,
 )
 st.session_state["current_page"] = "trade_log"
 sidebar_chat.render()
+render_topbar()
 
+_ms_key, _ms_label, _ms_color = _market_status()
 st.markdown(f"""
-<div style="margin-bottom:6px;">
-    <span style="color:{AMBER};font-size:0.72rem;text-transform:uppercase;
-                 letter-spacing:0.1em;">Trade Log</span>
-    <h1 style="margin:2px 0 0;">Positions</h1>
+<div style="margin-bottom:6px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;">
+    <div>
+        <span style="color:{AMBER};font-size:0.72rem;text-transform:uppercase;
+                     letter-spacing:0.1em;">Trade Log</span>
+        <h1 style="margin:2px 0 0;">Positions</h1>
+    </div>
+    <span style="background:{_ms_color}1a;color:{_ms_color};font-size:0.72rem;font-weight:600;
+                 padding:3px 12px;border-radius:20px;text-transform:uppercase;
+                 letter-spacing:0.07em;border:1px solid {_ms_color}44;
+                 align-self:flex-end;margin-bottom:6px;">
+        {'&#9679;' if _ms_key == 'live' else '&#9675;'} {_ms_label}
+    </span>
 </div>
 <p style="color:{TEXT_DIM};font-size:0.85rem;margin-top:0;">
-    Log and manage your positions. All changes write directly to swing.db.
+    Open positions are tracked live against your entry price. Changes write directly to swing.db.
 </p>
 """, unsafe_allow_html=True)
 
@@ -210,16 +180,10 @@ with tab_open:
             "Adjust shares to match your actual order size."
         )
 
-    st.markdown(f"""
-<div style="background:{CARD};border:1px solid {BORDER};border-left:3px solid {AMBER};
-            border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:0.82rem;
-            color:{TEXT_MUTED};line-height:1.55;">
-    <strong style="color:{TEXT}">Already holding a position?</strong>
-    Use this form to log it — enter your best estimate for entry price and date,
-    or leave entry price at 0 if you genuinely don't know. The P&amp;L calculation
-    will be skipped for entries with no price.
-</div>
-""", unsafe_allow_html=True)
+    st.caption(
+        "Already holding a position? Enter your best estimate for entry price and date, "
+        "or leave entry price at 0 — P&L tracking will be skipped for that trade."
+    )
 
     _form_v = st.session_state.get("open_trade_form_v", 0)
     c1, c2, c3 = st.columns(3)
@@ -466,9 +430,62 @@ with tab_edit:
 
 # ── Positions tables ───────────────────────────────────────────────────────────
 st.divider()
-st.markdown(section_header_html("Open Positions"), unsafe_allow_html=True)
 
 open_df = load_open_trades()
+
+# ── Portfolio summary bar ──────────────────────────────────────────────────────
+if not open_df.empty:
+    _n_pos = len(open_df)
+    _total_cost = open_df.apply(
+        lambda r: float(r.shares or 0) * float(r.entry_price or 0), axis=1
+    ).sum()
+    _ms_key2, _ms_label2, _ms_color2 = _market_status()
+    _stale_count = 0
+    try:
+        _now_ts = pd.Timestamp.now(tz="UTC")
+        _opened_dt = pd.to_datetime(open_df["opened_at"], utc=True, errors="coerce")
+        _stale_count = int(((_now_ts - _opened_dt).dt.days > 30).sum())
+    except Exception:
+        pass
+
+    _stale_note = (
+        f' &nbsp;<span style="color:{AMBER};font-size:0.72rem;">'
+        f'{_stale_count} stale (&gt;30d)</span>'
+    ) if _stale_count else ""
+
+    st.markdown(f"""
+<div style="background:{CARD};border:1px solid {BORDER};border-radius:10px;
+            padding:14px 20px;margin-bottom:18px;display:flex;gap:32px;
+            align-items:center;flex-wrap:wrap;">
+    <div>
+        <div style="color:{TEXT_DIM};font-size:0.65rem;text-transform:uppercase;
+                    letter-spacing:0.09em;margin-bottom:3px;">Positions</div>
+        <div style="color:{TEXT};font-family:'DM Mono',monospace;
+                    font-size:1.4rem;font-weight:600;">{_n_pos}{_stale_note}</div>
+    </div>
+    <div>
+        <div style="color:{TEXT_DIM};font-size:0.65rem;text-transform:uppercase;
+                    letter-spacing:0.09em;margin-bottom:3px;">Deployed (cost basis)</div>
+        <div style="color:{TEXT};font-family:'DM Mono',monospace;
+                    font-size:1.4rem;font-weight:600;">
+            {"$" + f"{_total_cost:,.0f}" if _total_cost > 0 else "—"}
+        </div>
+    </div>
+    <div style="margin-left:auto;">
+        <div style="color:{TEXT_DIM};font-size:0.65rem;text-transform:uppercase;
+                    letter-spacing:0.09em;margin-bottom:3px;">Market</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+            <span style="width:8px;height:8px;border-radius:50%;
+                         background:{_ms_color2};display:inline-block;
+                         {'animation:pulse 2s infinite;' if _ms_key2 == 'live' else ''}"></span>
+            <span style="color:{_ms_color2};font-family:'DM Mono',monospace;
+                         font-size:0.85rem;font-weight:600;">{_ms_label2}</span>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown(section_header_html("Open Positions"), unsafe_allow_html=True)
 
 if open_df.empty:
     st.info("No open positions.")
@@ -481,7 +498,8 @@ else:
     except Exception:
         stale_ids = set()
 
-    # Metric filter
+    # Metric selector + market status context
+    _ms_key3, _ms_label3, _ms_color3 = _market_status()
     sel_metric = st.selectbox(
         "Show metric",
         _METRIC_OPTIONS,
@@ -490,21 +508,38 @@ else:
         label_visibility="collapsed",
     )
 
+    # Build metric column header — add market status badge when showing price/return data
+    _price_metrics = {"Last price", "Percent change", "Today's return", "Total return", "Total % change"}
+    if sel_metric in _price_metrics:
+        _metric_header_html = (
+            f'<span style="color:{TEXT_DIM};font-size:0.68rem;text-transform:uppercase;'
+            f'letter-spacing:0.08em;">{sel_metric}&nbsp;</span>'
+            + _status_badge_html(_ms_label3, _ms_color3)
+        )
+    else:
+        _metric_header_html = (
+            f'<span style="color:{TEXT_DIM};font-size:0.68rem;text-transform:uppercase;'
+            f'letter-spacing:0.08em;">{sel_metric}</span>'
+        )
+
     # Table header
     h_cols = st.columns([0.4, 0.9, 0.8, 1.0, 1.1, 1.4, 0.6, 3.5, 0.7])
-    for col, lbl in zip(h_cols, ["ID", "Symbol", "Shares", "Entry $", sel_metric, "Opened", "", "Price", ""]):
-        col.markdown(
-            f"<span style='color:{TEXT_DIM};font-size:0.68rem;text-transform:uppercase;"
-            f"letter-spacing:0.08em;'>{lbl}</span>",
-            unsafe_allow_html=True,
-        )
+    _headers = ["ID", "Symbol", "Shares", "Entry $", None, "Opened", "", "Chart", ""]
+    for col, lbl in zip(h_cols, _headers):
+        if lbl is None:
+            col.markdown(_metric_header_html, unsafe_allow_html=True)
+        else:
+            col.markdown(
+                f"<span style='color:{TEXT_DIM};font-size:0.68rem;text-transform:uppercase;"
+                f"letter-spacing:0.08em;'>{lbl}</span>",
+                unsafe_allow_html=True,
+            )
     st.markdown(f"<hr style='margin:4px 0 8px;border-color:{BORDER};opacity:1;'>",
                 unsafe_allow_html=True)
 
     for _, row in open_df.iterrows():
         tid = int(row.trade_id)
         is_stale = tid in stale_ids
-        sym_display = f"**{row.symbol}**" + (" [!]" if is_stale else "")
         opened = fmt_local_time(row.opened_at) if row.opened_at else "—"
         entry_price = float(row.entry_price) if row.entry_price else None
         shares = float(row.shares)
@@ -518,8 +553,13 @@ else:
         r_cols[0].markdown(f"<span style='color:{TEXT_DIM};font-family:DM Mono,monospace;'>#{tid}</span>",
                            unsafe_allow_html=True)
         equity_str = f"${shares * current:,.2f}" if current else ""
+        stale_badge = (
+            f' <span style="background:{AMBER}22;color:{AMBER};font-size:0.58rem;font-weight:600;'
+            f'padding:1px 5px;border-radius:6px;vertical-align:middle;">30d+</span>'
+        ) if is_stale else ""
         r_cols[1].markdown(
-            f"{sym_display}"
+            f'<span style="font-family:DM Mono,monospace;font-weight:600;">{row.symbol}</span>'
+            f'{stale_badge}'
             + (f"<br><span style='color:{color};font-size:0.72rem;font-family:DM Mono,monospace;'>{equity_str}</span>" if equity_str else ""),
             unsafe_allow_html=True,
         )
@@ -548,11 +588,16 @@ else:
 
         entry_date = str(row.opened_at)[:10] if row.opened_at else ""
         if entry_date:
-            fig = _sparkline(
+            rec_zone = getattr(row, "rec_entry_zone", None) or ""
+            entry_zone_str = rec_zone or (f"${entry_price:.2f}" if entry_price else "")
+            fig = _candle_chart(
                 row.symbol,
-                entry_price=entry_price,
-                entry_date=entry_date,
-                pdata=pdata,
+                entry_zone_str=entry_zone_str,
+                price=current,
+                period="3mo",
+                height=200,
+                trade_entry_price=entry_price,
+                trade_entry_date=entry_date,
             )
             if fig:
                 r_cols[7].plotly_chart(
@@ -560,16 +605,17 @@ else:
                     config={"displayModeBar": False},
                 )
 
-        if r_cols[8].button("Remove", key=f"rm_{tid}"):
+        if r_cols[8].button("Close", key=f"rm_{tid}", help=f"Close or remove trade #{tid}"):
             st.session_state[f"confirm_rm_{tid}"] = True
 
-        # Inline confirmation
+        # Inline removal confirmation
         if st.session_state.get(f"confirm_rm_{tid}"):
-            c_msg, c_yes, c_no = st.columns([4, 0.7, 0.6])
+            c_msg, c_yes, c_no = st.columns([4, 0.8, 0.6])
             c_msg.warning(
-                f"Remove #{tid}: {row.symbol} {row.shares:g} sh @ ${row.entry_price:.2f}?"
+                f"Remove #{tid}: {row.symbol} {row.shares:g} sh @ ${row.entry_price:.2f}? "
+                f"This deletes the trade record — use Close Position tab to log an exit instead."
             )
-            if c_yes.button("Confirm", key=f"yes_{tid}", type="primary"):
+            if c_yes.button("Delete", key=f"yes_{tid}", type="primary"):
                 conn = init_db()
                 try:
                     delete_trade(conn, tid)
@@ -580,12 +626,6 @@ else:
             if c_no.button("Cancel", key=f"no_{tid}"):
                 st.session_state.pop(f"confirm_rm_{tid}", None)
                 st.rerun()
-
-    if stale_ids:
-        st.warning(
-            f"**Stale position flag:** trade(s) {', '.join(f'#{i}' for i in stale_ids)} "
-            "have been open more than 30 days."
-        )
 
 # ── Trade history ──────────────────────────────────────────────────────────────
 st.markdown(section_header_html("Trade History"), unsafe_allow_html=True)

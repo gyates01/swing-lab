@@ -45,6 +45,6 @@ OUTCOME_DRIVER_OPTIONS = (
 )
 
 # Claude model + analyst agent settings
-MODEL = "claude-opus-4-7"
+MODEL = "claude-opus-4-8"
 ANALYST_MAX_TURNS = 5
 ANALYST_SNAPSHOT_TTL_SECONDS = 300

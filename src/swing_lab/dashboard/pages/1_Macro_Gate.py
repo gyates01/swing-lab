@@ -7,7 +7,8 @@ from swing_lab.dashboard.lib import (
     load_gate_runs, GATE_DESCRIPTIONS, FLAG_NOTES, COMPONENT_DISPLAY_NAMES, fmt_local_time,
 )
 from swing_lab.dashboard.theme import (
-    inject, make_fig, composite_score_html, score_card_html, section_header_html,
+    inject, render_topbar, make_fig, composite_score_html, score_card_html, section_header_html,
+    risk_row_html,
     ACCENT, GREEN, RED, AMBER, BLUE, PURPLE, BORDER, CARD, CARD2,
     TEXT, TEXT_MUTED, TEXT_DIM, CHART_COLORS,
 )
@@ -19,6 +20,7 @@ st.set_page_config(page_title="Macro Gate — Swing Lab", layout="wide")
 inject()
 st.session_state["current_page"] = "macro_gate"
 sidebar_chat.render()
+render_topbar()
 
 st.markdown(f"""
 <div style="margin-bottom:6px;">
@@ -134,7 +136,6 @@ with col_radar:
         ),
         showlegend=False,
         margin=dict(l=20, r=20, t=20, b=20),
-        paper_bgcolor=CARD,
     )
     fig.add_trace(go.Scatterpolar(
         r=vals_closed,
@@ -195,7 +196,10 @@ if flags:
     for key, val in flags:
         note = FLAG_NOTES.get(key, "")
         name = COMPONENT_DISPLAY_NAMES.get(key, key)
-        st.error(f"**{name}** is at {float(val):.0f}/100 — {note}")
+        st.markdown(
+            risk_row_html("high", f"{name} — {float(val):.0f}/100", note),
+            unsafe_allow_html=True,
+        )
 
 # ── History chart ──────────────────────────────────────────────────────────────
 st.markdown(section_header_html("Gate Score History"), unsafe_allow_html=True)

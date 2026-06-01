@@ -234,7 +234,7 @@ def save_recommendations(conn, scan_id: int, recs: list[dict]) -> int:
             rec.get("entry_low"),
             rec.get("entry_high"),
             rec.get("support"),
-            rec.get("stop"),
+            rec.get("stop_price"),
             rec.get("target"),
         )
         if existing:

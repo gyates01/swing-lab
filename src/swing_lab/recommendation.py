@@ -216,7 +216,6 @@ Call submit_recommendation with your synthesized analysis. Price levels must be 
                 model=MODEL,
                 max_tokens=2000,
                 betas=["cache-diagnosis-2026-04-07"],
-                thinking={"type": "adaptive"},
                 tools=[_RECOMMENDATION_TOOL],
                 tool_choice={"type": "tool", "name": "submit_recommendation"},
                 system=[{

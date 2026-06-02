@@ -1,12 +1,12 @@
 ﻿
 MACRO GATE ù PARTIAL
-  Composite score: 65.8/100
+  Composite score: 65.7/100
   Deployment sizing: 60%
 
 Components:
-  vix_level           : 48.7
-  vix_term_structure  : 77.4
+  vix_level           : 47.8
+  vix_term_structure  : 82.3
   breadth             : 100.0
-  credit_spread       : 67.0
-  put_call            : 97.2
-  factor_crowding     : 4.8
+  credit_spread       : 74.7
+  put_call            : 84.1
+  factor_crowding     : 5.1

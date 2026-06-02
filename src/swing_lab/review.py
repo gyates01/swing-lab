@@ -5,10 +5,10 @@ import os
 import anthropic
 import pandas as pd
 
-from swing_lab.config import MODEL, REVIEW_TOP_N
+from swing_lab.config import MODEL, REVIEW_TOP_N, get_api_key
 from swing_lab.fundamentals import get_fundamentals
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+ANTHROPIC_API_KEY = get_api_key()
 
 SYSTEM_PROMPT = """You are a buyside equity analyst performing fundamental due diligence.
 Your job: score each stock candidate 1–10 on four dimensions, identify red flags,

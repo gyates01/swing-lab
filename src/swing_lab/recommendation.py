@@ -4,7 +4,8 @@ import os
 import time
 import anthropic
 import pandas as pd
-from swing_lab.config import DATA_DIR, MAX_POSITION_PCT, MODEL, RECOMMEND_TOP_N, RECOMMEND_RED_FLAG_MAX
+from swing_lab.config import DATA_DIR, MAX_POSITION_PCT, MODEL, RECOMMEND_TOP_N, RECOMMEND_RED_FLAG_MAX, get_api_key
+from swing_lab.technicals import get_price_levels, format_levels_for_prompt
 
 _DIAG_FILE = DATA_DIR / ".cache_ids.json"
 
@@ -170,11 +171,14 @@ def synthesize_top_pick(
     open_symbols: list,
 ) -> dict:
     """Single Anthropic call to synthesize rationale + risks for the #1 pick."""
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    client = anthropic.Anthropic(api_key=get_api_key())
 
     symbol = top_pick_row["symbol"]
     current_price, price_session = _fetch_current_price(symbol)
     price_str = f"${current_price:.2f}" if current_price else "unknown"
+
+    levels = get_price_levels(symbol)
+    levels_block = format_levels_for_prompt(levels, current_price)
 
     runner_lines = []
     for _, row in runner_ups_df.iterrows():
@@ -190,6 +194,7 @@ def synthesize_top_pick(
     except Exception:
         pass
 
+    levels_section = f"\n{levels_block}\n" if levels_block else ""
     user_msg = f"""Top pick: {symbol}
 Current price: {price_str}
 Blended score: {top_pick_row.get("blended_score", 0):.2f}/100
@@ -202,11 +207,11 @@ Currently held: {", ".join(open_symbols) if open_symbols else "none"}
 
 Runner-ups (ranked #2 and #3):
 {chr(10).join(runner_lines) if runner_lines else "none"}
-
+{levels_section}
 Claude's prior analysis of {symbol}:
 {top_pick_row.get("claude_summary", "")}
 
-Call submit_recommendation with your synthesized analysis. Price levels must be consistent: stop < support < entry_low ≤ entry_high < target. Target should reflect realistic 10–25% upside given momentum and macro conditions.
+Call submit_recommendation with your synthesized analysis. Price levels must be consistent: stop < support < entry_low ≤ entry_high < target. All levels must be anchored to the technical chart levels above — do not invent arbitrary numbers.
 """
 
     prev_id = _load_cache_id("recommend")

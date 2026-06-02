@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -48,3 +49,8 @@ OUTCOME_DRIVER_OPTIONS = (
 MODEL = "claude-opus-4-8"
 ANALYST_MAX_TURNS = 5
 ANALYST_SNAPSHOT_TTL_SECONDS = 300
+
+
+def get_api_key() -> str | None:
+    """Return the Swing Lab Anthropic API key, falling back to the generic key."""
+    return os.environ.get("SWING_LAB_ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")

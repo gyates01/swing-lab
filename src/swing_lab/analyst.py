@@ -5,7 +5,7 @@ import time
 
 import anthropic
 
-from swing_lab.config import ANALYST_MAX_TURNS, MODEL
+from swing_lab.config import ANALYST_MAX_TURNS, MODEL, get_api_key
 
 _SYSTEM_PROMPT = (
     "You are an AI trading analyst assistant embedded in Swing Lab, a momentum swing trading "
@@ -235,9 +235,9 @@ def run_turn(
         (assistant_text, updated_history, telemetry)
         telemetry = {"cache_hit": bool, "tokens_saved": int, "tool_calls": list[str], "message_id": str|None}
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = get_api_key()
     if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY env var not set")
+        raise RuntimeError("SWING_LAB_ANTHROPIC_API_KEY or ANTHROPIC_API_KEY env var not set")
 
     client = anthropic.Anthropic(api_key=api_key)
     messages = list(history) + [{"role": "user", "content": user_msg}]

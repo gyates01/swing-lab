@@ -4,7 +4,7 @@ import os
 import time
 import anthropic
 
-from swing_lab.config import DATA_DIR, MODEL
+from swing_lab.config import DATA_DIR, MODEL, get_api_key
 
 _DIAG_FILE = DATA_DIR / ".cache_ids.json"
 
@@ -40,7 +40,7 @@ _SYSTEM_PROMPT = (
 
 def analyze_trades_with_context(trade_rows: list[dict]) -> dict:
     """Send trades (with outcome + rec context) to Claude. Returns summary dict."""
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    client = anthropic.Anthropic(api_key=get_api_key())
 
     if not trade_rows:
         return {

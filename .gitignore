@@ -19,6 +19,7 @@ __pycache__/
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # Claude Code local config (permissions, hooks — not needed by remote agents)
 .claude/settings.json

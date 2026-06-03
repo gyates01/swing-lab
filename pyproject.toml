@@ -13,6 +13,7 @@ dependencies = [
     "lxml>=5.0",
     "streamlit>=1.40",
     "plotly>=5.20",
+    "python-dotenv>=1.0",
 ]
 
 [project.scripts]

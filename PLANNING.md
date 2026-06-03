@@ -1,117 +1,92 @@
-# Swing Lab — Planning
+# Fix: Swing Lab silently using the TradingAgents API key
 
-## Overview
-Python CLI trading research tool built across 12 milestones. Covers the full swing trading workflow: factor exposure analysis, edge definition, momentum scanner, macro gate, walk-forward backtest, Claude review layer, trade log, post-mortem, Streamlit dashboard, and conversational analyst agent. All milestones shipped except M10 step 9.
+## Context
 
-_Full implementation step details (now executed) archived in `PLAN.md`. That file can be deleted when no longer needed as a reference._
+Swing Lab and TradingAgents are sibling Anthropic API projects on the same Windows box. Commit `afb2294` (2026-06-02) introduced `get_api_key()` in `src/swing_lab/config.py` to route Swing Lab to its own key via the `SWING_LAB_ANTHROPIC_API_KEY` env var, with `ANTHROPIC_API_KEY` as a fallback. The Anthropic console now confirms Swing Lab is still billing the TradingAgents key — the routing is failing silently.
 
-## Milestone Status
+**Root cause** (3 contributing factors):
 
-| Milestone | Description | Status | Completed |
-|---|---|---|---|
-| Phase 1 | Factor exposure analysis, Obsidian writeback | ✅ Complete | (prior session) |
-| Phase 2 | Edge definition, config.py, Phase 2 Obsidian writeback | ✅ Complete | 2026-05-25 |
-| M3a | Core scanner + simple macro gate (2-signal) + CLI + SQLite DB | ✅ Complete | 2026-05-25 |
-| M3b | Walk-forward backtest | ✅ Complete | 2026-05-25 |
-| M3.5 | Full 6-signal macro gate (VIX, SPY trend, HYG, yield curve, breadth, VIX term) | ✅ Complete | 2026-05-25 |
-| M4 | Claude Analyst review layer (top-6 candidates via API) | ✅ Complete | 2026-05-25 |
-| M5 | Trade log + adaptation loop (open/close/list/postmortem) | ✅ Complete | 2026-05-25 |
-| M6 | Streamlit educational dashboard | ✅ Complete | 2026-05-25 |
-| M7 | Dashboard refresh buttons + stronger fundamentals signals | ✅ Complete | 2026-05-26 |
-| M8 | Trade Recommendation Engine | ✅ Complete | 2026-05-26 |
-| M9 | Trade Outcome Feedback Loop | ✅ Complete | 2026-05-27 |
-| M10 | Conversational Analyst Agent (steps 1–8 complete; step 9 pending) | ✅ Complete | 2026-05-31 |
-| Automation | Scheduled gate/scan/review | ✅ Complete | 2026-05-30 |
-| Chart | Recommendation level labels on charts | ✅ Complete | 2026-05-30 |
-| M11 | Dashboard visual rehaul (floating chat, ticker hero, bull/bear split, zone KPIs, topbar) | ✅ Complete | 2026-05-31 |
-| M12 | Trade Log design pass + shared charts module + market status indicator | ✅ Complete | 2026-05-31 |
-| M13 | Design polish pass — remaining dashboard pages (Macro Gate, Scanner, Claude Review, Postmortem) | ✅ Complete | 2026-05-31 |
-| M14 | Design audit D1+D2+D3 — type/spacing/radius/transition token system in theme.py, TEXT_DIM contrast fix, prefers-reduced-motion, KPI grid responsive. Score: 61→83/100 | ✅ Complete | 2026-05-31 |
-| M15 | Recommendation overlays consistency — switch to tool_use structured output, persist price levels as DB columns, dashboard prefers columns over text-parse, visible warning on failure | ✅ Complete | 2026-05-31 |
+1. `config.py:54-56` — `get_api_key()` silently falls back to `ANTHROPIC_API_KEY`. On this machine that var is set (Windows user env) to the *same value* as the TradingAgents key. Any process that doesn't have `SWING_LAB_ANTHROPIC_API_KEY` in its env quietly bills TradingAgents.
+2. **Zero observability** — nothing logs which key was picked. `review.py:63` raises `"ANTHROPIC_API_KEY env var not set"` which doesn't even name the Swing-Lab-specific var.
+3. **No project-local env loading** — no `.env` file, no `python-dotenv`, so the key comes only from inherited shell env. The Windows Task Scheduler entries that run `scripts/nightly_run.ps1` and `scripts/premarket_run.ps1` are the most likely contexts where `SWING_LAB_ANTHROPIC_API_KEY` is missing from the inherited env (neither script references the var, and no `.xml` scheduled-task export is checked in).
 
----
+**Intended outcome:** Swing Lab uses *only* its dedicated key. If the dedicated key isn't available, it fails loudly with a clear, actionable error — never silently falls through to a sibling project's key.
 
-## Phase 1 — Factor Exposure Analysis
-Analyzes current portfolio factor exposures (momentum, value, quality, size, volatility). Writes "Phase 1 — Factor Exposure (Filled)" block back into the Obsidian strategy note. Script: `scripts/phase1_factor_exposure.py`.
+## Approach
 
----
+Three small, coordinated changes (per user choices on strictness + .env support):
 
-## Phase 2 — Edge Definition
-All edge parameters committed to `src/swing_lab/config.py`: 12-1 month momentum signal, S&P 500 universe, bi-weekly Sunday rebalance, 8% max position, top-20 scanner output, top-6 to Claude review, macro gate thresholds (full ≥70, partial 40–69, stand down <40). Obsidian writeback: `scripts/phase2_define_edge.py`.
+### 1. Make `get_api_key()` strict — remove silent fallback
 
----
+**File:** `src/swing_lab/config.py:54-56`
 
-## M3a — Scanner + Gate + CLI
-`swing-lab gate`, `swing-lab scan` operational. Simple 2-signal gate. SQLite DB initialized. Ranked momentum table output.
+Replace the current `get_api_key()` with a strict version that:
+- Reads only `SWING_LAB_ANTHROPIC_API_KEY` (no fallback to `ANTHROPIC_API_KEY`).
+- Raises `RuntimeError` with a clear message naming the missing var and pointing at both shell-env and `.env` as remediation paths.
+- Returns `str` (not `str | None`), so call-sites can drop their None-checks.
 
----
+### 2. Load `.env` at the repo root once at config import
 
-## M3b — Walk-Forward Backtest
-`swing-lab backtest`: rolling window validation of 12-1 momentum signal across historical data. Performance metrics vs SPY benchmark.
+**File:** `src/swing_lab/config.py` (top of file) + `pyproject.toml`
 
----
+- Add `python-dotenv>=1.0` to `pyproject.toml` dependencies.
+- At the top of `config.py`, call `load_dotenv()` resolved to the repo root (walk up from `__file__` to find the dir containing `pyproject.toml`, or pass an explicit path). Use `override=False` so shell env still wins if set.
+- Create `.env.example` (checked in) documenting the required `SWING_LAB_ANTHROPIC_API_KEY=sk-ant-...` entry.
+- Create local `.env` (already gitignored at `.gitignore:20-21`) with the actual Swing Lab key.
 
-## M3.5 — Full 6-Signal Macro Gate
-Expanded from 2 to 6 signals: VIX level, SPY 200-day trend, HYG credit spread, yield curve slope, market breadth (% above 200MA), VIX term structure. Composite score 0–100.
+This makes the key project-local: any process launched from the repo dir picks it up, regardless of which shell or scheduler invoked it. Fixes the Task Scheduler env-stripping risk without touching the `.ps1` scripts.
 
----
+### 3. Stop capturing the key at module-import time
 
-## M4 — Claude Analyst Review
-`swing-lab review`: top-6 candidates from scanner fed to Claude via Anthropic SDK. Returns structured analysis (thesis, risks, conviction) per ticker. Prompt caching used for efficiency.
+**Files:**
+- `src/swing_lab/review.py:11` — remove `ANTHROPIC_API_KEY = get_api_key()` module global; call `get_api_key()` inside `review_candidates()` at `review.py:62-65`.
+- `src/swing_lab/analyst.py:11` — remove the module-level capture if present; only call `get_api_key()` per turn (already does at line 238-242).
 
----
+This is a hygiene fix — import-time capture is subtle and surprising (the env at import-time vs call-time can differ). With step 1+2 it's strictly safer.
 
-## M5 — Trade Log + Adaptation Loop
-`swing-lab log open/close/list`, `swing-lab postmortem`: SQLite trade log. Claude pattern analysis across closed trades identifies systematic edge or drift.
+Already-correct call sites that need no changes once `get_api_key()` returns `str`:
+- `src/swing_lab/postmortem.py:43` — already calls `get_api_key()` inline.
+- `src/swing_lab/recommendation.py:174` — same.
 
----
+## Critical files
 
-## M6 — Streamlit Dashboard
-Educational/review UI: macro gate components, top picks, trade history, P&L chart. Local only (`streamlit run`).
+| File | Change |
+|---|---|
+| `src/swing_lab/config.py` | Add `load_dotenv()` at top; rewrite `get_api_key()` as strict. |
+| `pyproject.toml` | Add `python-dotenv>=1.0` to `dependencies`. |
+| `src/swing_lab/review.py` | Drop module-level `ANTHROPIC_API_KEY`; call `get_api_key()` inside `review_candidates()`. |
+| `src/swing_lab/analyst.py` | Drop any module-level key capture; rely on per-turn `get_api_key()`. |
+| `.env.example` (new) | Template: `SWING_LAB_ANTHROPIC_API_KEY=sk-ant-api03-...` |
+| `.env` (new, local only) | Actual key value; gitignored via existing `.gitignore:20`. |
 
----
+No changes needed to: `.gitignore` (`.env` already excluded), `scripts/*.ps1` (`.env` loading covers them), `postmortem.py`, `recommendation.py`.
 
-## M7 — Dashboard Refresh + Fundamentals
-Live refresh buttons on dashboard. Added fundamental signals (EPS trend, revenue growth) to scanner ranking.
+## Reuse notes
 
----
+- No existing `dotenv` usage in the project (confirmed by grep — zero matches). This is the first introduction of `python-dotenv`.
+- `get_api_key()` is already the single source of truth — keeping that abstraction; just tightening its behavior.
 
-## M8 — Trade Recommendation Engine
-`swing-lab rebalance` enhanced: combines gate score + scan rank + Claude review conviction into a weighted recommendation. Outputs diff vs current positions.
+## Verification
 
----
+End-to-end checks the user (or I) should run after implementation:
 
-## M9 — Trade Outcome Feedback Loop
-Closed trade outcomes feed back into the recommendation engine. Adjusts signal weights based on historical accuracy per signal type.
+1. **Strictness check.** In a fresh PowerShell where `SWING_LAB_ANTHROPIC_API_KEY` is unset (`Remove-Item Env:SWING_LAB_ANTHROPIC_API_KEY`) and no `.env` exists, run `uv run swing-lab review`. Expect: `RuntimeError: SWING_LAB_ANTHROPIC_API_KEY not set...` — naming the right var. Proves the silent fallback is gone.
 
----
+2. **`.env` loading.** Clear the shell var as above, then create `.env` with the Swing Lab key. Run `uv run swing-lab review`. Expect: success. Proves `.env` is loaded.
 
-## M10 — Conversational Analyst Agent ⏳
-Steps 1–8 complete: agent scaffolding, tool definitions, conversation loop, context injection. Step 9 (final wiring + integration test) pending. See TASKS.md.
+3. **Shell env still wins (precedence).** With both `.env` and a different value in `$env:SWING_LAB_ANTHROPIC_API_KEY`, confirm the shell value is used (via `python -c "from swing_lab.config import get_api_key; print(get_api_key()[-4:])"` showing the shell suffix). Validates `override=False`.
 
----
+4. **Billing confirmation.** After ~24h of normal use (1 nightly run + 1 premarket run + any interactive use), open the Anthropic console:
+   - Swing Lab key suffix should show fresh usage.
+   - TradingAgents key suffix should show **no new** usage attributable to Swing Lab runs (only TradingAgents activity).
+   - This is the ground-truth signal the user originally used to detect the bug.
 
-## Automation — Scheduled Gate/Scan/Review
-Task scheduler runs gate + scan + review every Sunday morning. Output logged to `data/swing.db` and written to Obsidian.
+5. **Scheduled-task smoke test.** Manually trigger `scripts/nightly_run.ps1` (run it from PowerShell in the repo dir). Confirm: the run completes without the new RuntimeError, results land in `results/`, and the run-log in `results/nightly.log` shows a clean `gate complete` / `scan complete`. (Note: `gate` and `scan` don't actually call Anthropic — they exercise the config import path, which is what we need to verify.) Then watch the next real 2am ET run.
 
----
+6. **Premarket Claude path.** Trigger `scripts/premarket_run.ps1` manually — this *does* call Anthropic via `swing-lab review`. Confirms the scheduled-task context can read the key and successfully bills the Swing Lab account.
 
-## v2 Ideas (not scheduled)
-- Live data feed integration (replace yfinance polling)
-- Options screening layer (calls on top momentum picks)
-- Multi-strategy support (mean reversion, breakout)
-- Update Wealthfront positions when new statement available
+## Out of scope
 
----
-
-## M11 — Dashboard Visual Rehaul
-
-| # | Milestone | Status | Completed |
-|---|---|---|---|
-| M11.1 | Add 4 HTML helpers to theme.py | ✅ Complete | 2026-05-31 |
-| M11.2 | Floating chat button + st.dialog | ✅ Complete | 2026-05-31 |
-| M11.3 | Sidebar section labels + header bar | ✅ Complete | 2026-05-31 |
-| M11.4 | Recommendation page rewrite | ✅ Complete | 2026-05-31 |
-| M11.5 | Scanner polish | ✅ Complete | 2026-05-31 |
-| M11.6 | Claude Review bull/bear split | ✅ Complete | 2026-05-31 |
-| M11.7 | Gate/Trade Log/Postmortem consistency | ✅ Complete | 2026-05-31 |
+- Modifying the `.ps1` scripts to explicitly check for the env var (`.env` loading at config import covers this).
+- Adding a `swing-lab whoami` debug subcommand (could be a follow-up if observability is wanted; not needed once fail-loud is in place).
+- Auditing TradingAgents itself for mirror-image issues.

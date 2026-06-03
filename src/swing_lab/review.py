@@ -8,8 +8,6 @@ import pandas as pd
 from swing_lab.config import MODEL, REVIEW_TOP_N, get_api_key
 from swing_lab.fundamentals import get_fundamentals
 
-ANTHROPIC_API_KEY = get_api_key()
-
 SYSTEM_PROMPT = """You are a buyside equity analyst performing fundamental due diligence.
 Your job: score each stock candidate 1–10 on four dimensions, identify red flags,
 and give a one-line investment thesis summary.
@@ -59,10 +57,7 @@ def review_candidates(top_n_df: pd.DataFrame, progress=None) -> pd.DataFrame:
             symbol, sector, momentum, quant_score, claude_score,
             blended_score, red_flags_json, claude_summary
     """
-    if ANTHROPIC_API_KEY is None:
-        raise RuntimeError("ANTHROPIC_API_KEY env var not set")
-
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = anthropic.Anthropic(api_key=get_api_key())
     candidates = top_n_df.head(REVIEW_TOP_N).copy()
 
     results = []

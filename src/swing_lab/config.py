@@ -1,7 +1,10 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 ROOT = Path(__file__).resolve().parent.parent.parent
+load_dotenv(ROOT / ".env", override=False)
 DATA_DIR = ROOT / "data"
 REPORTS_DIR = DATA_DIR / "reports"
 DB_PATH = DATA_DIR / "swing.db"
@@ -51,6 +54,11 @@ ANALYST_MAX_TURNS = 5
 ANALYST_SNAPSHOT_TTL_SECONDS = 300
 
 
-def get_api_key() -> str | None:
-    """Return the Swing Lab Anthropic API key, falling back to the generic key."""
-    return os.environ.get("SWING_LAB_ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
+def get_api_key() -> str:
+    key = os.environ.get("SWING_LAB_ANTHROPIC_API_KEY")
+    if not key:
+        raise RuntimeError(
+            "SWING_LAB_ANTHROPIC_API_KEY is not set. "
+            "Add it to your shell env or create a .env file at the repo root."
+        )
+    return key

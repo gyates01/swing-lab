@@ -25,7 +25,8 @@ Steps 1–8 complete. One item remaining:
 - [x] Remove left-border AI-slop amber card; replace with `st.caption()`
 - [x] Inline `30d+` stale badge on symbol; remove redundant bottom warning
 - [x] Rename "Remove" → "Close" with better confirmation copy
-- [ ] Live test with active position data — verify 200px candlestick renders cleanly in narrow column
+- [x] Live test with active position data — verify 200px candlestick renders cleanly in narrow column
+  - Tested: SNDK open trade (#3, entry $1662.44), 200px chart renders with 4 traces (SMA200/50/20 + candlestick), entry markers confirmed
 
 ## M13 — Design polish remaining pages (2026-05-31)
 
@@ -36,3 +37,17 @@ Steps 1–8 complete. One item remaining:
 - [x] 5_Recommendation.py — add company name below ticker (cached yfinance shortName), entry zone shows full range `$lo–$hi` in KPI grid
 - [x] theme.py — `zone_kpi_grid_html` now accepts `entry_range=(lo, hi)` to show the full band vs. midpoint only
 
+
+## M15 — Recommendation Overlays Consistency (COMPLETE ✅ 2026-05-31)
+
+- [x] Switch `synthesize_top_pick` to tool_use (`submit_recommendation` schema) — model can't skip price levels
+- [x] Remove `thinking={"type":"adaptive"}` — API rejects it with forced tool_choice
+- [x] Increase max_tokens 700→2000 — eliminates truncation before price fields
+- [x] Add 5 new DB columns: entry_low, entry_high, support, stop_price, target (REAL) + migrations
+- [x] Update `save_recommendations` + `load_latest_recommendations` for new columns
+- [x] Rewrite `_parse_zone_levels(rec, price)` — prefers DB columns, text-parse fallback for legacy rows
+- [x] Fix key mismatch: `stop` key renamed to `stop_price` in generate_recommendations/compose_runner_up
+- [x] Extend `candle_chart()` with explicit level kwargs — skips text-parse when all 5 provided
+- [x] Add visible amber warning when overlays unavailable (no more silent hiding)
+- [x] Kill lingering stale Python processes; restart dashboard clean
+- [x] Verified working end-to-end: stop/target/support/entry zone all render + KPI grid updates

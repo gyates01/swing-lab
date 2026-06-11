@@ -1,2 +1,4 @@
-﻿ERROR: $FDXF: possibly delisted; no price data found  (1d 2025-06-05 02:00:41.767568 -> 2026-05-16 02:00:41.767568) (Yahoo error = "Data doesn't exist for startDate = 1749103241, endDate = 1778911241")
-Run attempted: 2026-06-10 09:00:08 UTC
+﻿run_date=2026-06-11
+completed_at=2026-06-11 09:00:06 UTC
+gate_lines=12
+scan_lines=2

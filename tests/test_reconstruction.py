@@ -105,3 +105,21 @@ def test_fills_sorted_by_time_regardless_of_input_order():
     assert len(eps) == 1
     assert eps[0]["opening_order_id"] == "o1"
     assert eps[0]["entry_price"] == 150.0
+
+
+def test_rebuy_after_partial_sell_is_one_episode():
+    fills = [
+        _fill("AAPL", "buy", 10, 100.0, 1, "o1"),
+        _fill("AAPL", "sell", 4, 110.0, 2, "o2"),   # partial, net 6
+        _fill("AAPL", "buy", 4, 130.0, 3, "o3"),    # re-add, net 10, still open
+        _fill("AAPL", "sell", 10, 140.0, 5, "o4"),  # flat -> closes
+    ]
+    eps = reconstruct_episodes(fills)
+    assert len(eps) == 1
+    ep = eps[0]
+    # entry averaged over BOTH buys: (10*100 + 4*130) / 14 = 1520/14
+    assert round(ep["entry_price"], 6) == round(1520.0 / 14.0, 6)
+    assert ep["shares"] == 14            # total bought, not net
+    assert ep["opening_order_id"] == "o1"
+    assert ep["broker_order_ids"] == ["o1", "o3", "o2", "o4"]
+    assert ep["closed_at"] is not None

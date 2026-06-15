@@ -66,9 +66,6 @@ def reconstruct_episodes(fills: list[dict]) -> list[dict]:
         sells: list[dict] = []
         for f in ordered:
             if f["side"] == "buy":
-                if net <= EPSILON and buys:
-                    # defensive: should not happen (closed episodes are flushed below)
-                    pass
                 buys.append(f)
                 net += f["shares"]
             else:  # sell

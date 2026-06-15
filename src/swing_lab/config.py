@@ -41,6 +41,12 @@ REBALANCE_EVERY_N_WEEKS = 2
 # Postmortem
 POSTMORTEM_TRADE_LIMIT = 30
 
+# Broker integration (Robinhood)
+BROKER = "robinhood"
+KEYRING_SERVICE = "swing_lab_robinhood"
+SYNC_LOOKBACK_DAYS = 90        # how far back `sync` pulls filled orders
+REC_MATCH_WINDOW_DAYS = 5      # trading-day window to link a trade to a recommendation
+
 # Outcome capture options (used by dashboard + CLI)
 OUTCOME_THESIS_OPTIONS = ("yes", "partial", "no", "unclear")
 OUTCOME_DRIVER_OPTIONS = (
@@ -62,3 +68,25 @@ def get_api_key() -> str:
             "Add it to your shell env or create a .env file at the repo root."
         )
     return key
+
+
+_CRED_KEYS = ("username", "password", "totp_seed")
+
+
+def store_broker_credentials(username: str, password: str, totp_seed: str) -> None:
+    """Persist Robinhood credentials to the OS keyring (Windows Credential Manager)."""
+    import keyring
+    values = {"username": username, "password": password, "totp_seed": totp_seed}
+    for key in _CRED_KEYS:
+        keyring.set_password(KEYRING_SERVICE, key, values[key])
+
+
+def get_broker_credentials() -> dict:
+    """Return {username, password, totp_seed} from the keyring, or raise if unset."""
+    import keyring
+    creds = {key: keyring.get_password(KEYRING_SERVICE, key) for key in _CRED_KEYS}
+    if not all(creds.values()):
+        raise RuntimeError(
+            "Robinhood credentials not found. Run `swing-lab broker-login` first."
+        )
+    return creds

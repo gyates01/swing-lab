@@ -493,3 +493,43 @@ def save_scan(conn, gate_score, sizing, picks_df) -> int:
 
     conn.commit()
     return scan_id
+
+
+def replace_positions(conn, broker: str, positions: list[dict]) -> None:
+    """Replace the entire positions snapshot for a broker. Does NOT commit."""
+    synced_at = datetime.now(timezone.utc).isoformat()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM positions WHERE broker = ?", (broker,))
+    for p in positions:
+        cursor.execute(
+            """INSERT INTO positions
+               (synced_at, broker, symbol, quantity, average_buy_price,
+                market_value, last_price)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (synced_at, broker, p["symbol"], p["quantity"],
+             p.get("average_buy_price"), p.get("market_value"), p.get("last_price")),
+        )
+
+
+def load_positions(conn, broker: str) -> list[dict]:
+    """Return the current positions snapshot for a broker."""
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT symbol, quantity, average_buy_price, market_value, last_price
+           FROM positions WHERE broker = ? ORDER BY symbol""",
+        (broker,),
+    )
+    cols = [d[0] for d in cursor.description]
+    return [dict(zip(cols, row)) for row in cursor.fetchall()]
+
+
+def save_account_snapshot(conn, broker: str, snap: dict) -> None:
+    """Append an account snapshot row. Does NOT commit."""
+    synced_at = datetime.now(timezone.utc).isoformat()
+    conn.execute(
+        """INSERT INTO account_snapshots
+           (synced_at, broker, total_equity, buying_power, cash)
+           VALUES (?, ?, ?, ?, ?)""",
+        (synced_at, broker, snap.get("total_equity"),
+         snap.get("buying_power"), snap.get("cash")),
+    )

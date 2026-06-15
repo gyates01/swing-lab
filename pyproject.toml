@@ -14,6 +14,10 @@ dependencies = [
     "streamlit>=1.40",
     "plotly>=5.20",
     "python-dotenv>=1.0",
+    "tzdata>=2024.1",  # IANA tz database for zoneinfo on Windows
+    "robin_stocks>=3.0",
+    "keyring>=24.0",
+    "pyotp>=2.9",
 ]
 
 [project.scripts]
@@ -27,4 +31,9 @@ build-backend = "hatchling.build"
 packages = ["src/swing_lab"]
 
 [dependency-groups]
-dev = []
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

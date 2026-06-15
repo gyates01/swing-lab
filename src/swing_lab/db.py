@@ -1,4 +1,5 @@
 """SQLite schema for swing.db."""
+import json
 import sqlite3
 from datetime import datetime, timezone
 from swing_lab.config import DB_PATH
@@ -533,3 +534,66 @@ def save_account_snapshot(conn, broker: str, snap: dict) -> None:
         (synced_at, broker, snap.get("total_equity"),
          snap.get("buying_power"), snap.get("cash")),
     )
+
+
+def insert_broker_episode(conn, broker: str, episode: dict, rec_id: int | None) -> int:
+    """Insert a reconstructed position-episode as a trades row. Does NOT commit.
+    Returns trade_id. Open episodes leave exit_price/closed_at/pnl NULL.
+    """
+    import json
+    cursor = conn.cursor()
+    cursor.execute(
+        """INSERT INTO trades
+           (opened_at, closed_at, symbol, side, shares, entry_price, exit_price,
+            rec_id, thesis_text, exit_reason, pnl, pnl_pct,
+            broker, broker_order_ids_json, source, mode, fees)
+           VALUES (?, ?, ?, 'long', ?, ?, ?, ?, NULL, NULL, ?, ?,
+                   ?, ?, 'broker', 'live', ?)""",
+        (episode["opened_at"], episode["closed_at"], episode["symbol"],
+         episode["shares"], episode["entry_price"], episode["exit_price"],
+         rec_id, episode["pnl"], episode["pnl_pct"],
+         broker, json.dumps(episode["broker_order_ids"]), episode["fees"]),
+    )
+    return cursor.lastrowid
+
+
+def update_trade_close_from_broker(conn, trade_id: int, episode: dict) -> None:
+    """Update a previously-open broker trade with its close data. Does NOT commit."""
+    import json
+    conn.execute(
+        """UPDATE trades SET
+           closed_at = ?, exit_price = ?, pnl = ?, pnl_pct = ?, fees = ?,
+           broker_order_ids_json = ?
+           WHERE trade_id = ?""",
+        (episode["closed_at"], episode["exit_price"], episode["pnl"],
+         episode["pnl_pct"], episode["fees"],
+         json.dumps(episode["broker_order_ids"]), trade_id),
+    )
+
+
+def find_trade_by_opening_order(conn, broker: str, opening_order_id: str) -> dict | None:
+    """Find the trade whose episode opened with this order_id, or None."""
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT trade_id, exit_price FROM trades
+           WHERE broker = ? AND broker_order_ids_json LIKE ?""",
+        (broker, f'%"{opening_order_id}"%'),
+    )
+    row = cursor.fetchone()
+    if row is None:
+        return None
+    return {"trade_id": row[0], "exit_price": row[1]}
+
+
+def load_recent_recs_for_symbol(conn, symbol: str, lookback_days: int = 60) -> list[dict]:
+    """Return recent recommendations for a symbol (newest first) for trade matching."""
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT rec_id, created_at FROM recommendations
+           WHERE symbol = ?
+           ORDER BY created_at DESC
+           LIMIT 50""",
+        (symbol,),
+    )
+    cols = [d[0] for d in cursor.description]
+    return [dict(zip(cols, row)) for row in cursor.fetchall()]

@@ -20,7 +20,7 @@ def _cmd_gate():
         print(f"  {k:20s}: {v:.1f}")
 
 
-def _cmd_scan():
+def _cmd_scan(strategy=None):
     from swing_lab.universe import fetch_sp500
     from swing_lab.scanner import score_universe, top_n_picks
     from swing_lab.macro_gate import compute_gate
@@ -35,11 +35,24 @@ def _cmd_scan():
         return
 
     print(f"MACRO GATE — {gate['label']} | score={gate['score']:.1f} | sizing={gate['sizing']*100:.0f}%")
-    print("Scoring S&P 500 universe (this takes ~2–3 minutes)...")
+    print("Scoring S&P 500 universe (batched download — under a minute)...")
 
     universe = fetch_sp500()
     scored = score_universe(universe)
     picks = top_n_picks(scored, gate["sizing"])
+
+    # Apply strategy filter if requested
+    if strategy:
+        from swing_lab.strategy_filter import filter_candidates, format_filter_result
+        print(f"\nApplying strategy filter: {strategy}...")
+        symbols = picks["symbol"].tolist()
+        checks = filter_candidates(symbols, strategy=strategy)
+        print()
+        print(format_filter_result(checks, top_n=10))
+        # Keep only passing candidates
+        passing = [s for s, c in checks.items() if c.passed]
+        picks = picks[picks["symbol"].isin(passing)].reset_index(drop=True)
+        print(f"\nPassing candidates: {len(passing)}/{len(symbols)}")
 
     conn = init_db()
     try:
@@ -57,7 +70,7 @@ def _cmd_scan():
     print(f"\nScan #{scan_id} saved to swing.db")
 
 
-def _cmd_review():
+def _cmd_review(strategy=None):
     from swing_lab.universe import fetch_sp500
     from swing_lab.scanner import score_universe, top_n_picks
     from swing_lab.macro_gate import compute_gate
@@ -73,12 +86,24 @@ def _cmd_review():
         return
 
     print(f"MACRO GATE — {gate['label']} | score={gate['score']:.1f} | sizing={gate['sizing']*100:.0f}%")
-    print("Scoring S&P 500 universe (this takes ~2–3 minutes)...")
+    print("Scoring S&P 500 universe (batched download — under a minute)...")
 
     # Fresh scan for each review run ensures the Claude analysis uses current market rankings
     universe = fetch_sp500()
     scored = score_universe(universe)
     picks = top_n_picks(scored, gate["sizing"])
+
+    # Apply strategy filter if requested
+    if strategy:
+        from swing_lab.strategy_filter import filter_candidates, format_filter_result
+        print(f"\nApplying strategy filter: {strategy}...")
+        symbols = picks["symbol"].tolist()
+        checks = filter_candidates(symbols, strategy=strategy)
+        print()
+        print(format_filter_result(checks, top_n=10))
+        passing = [s for s, c in checks.items() if c.passed]
+        picks = picks[picks["symbol"].isin(passing)].reset_index(drop=True)
+        print(f"\nPassing candidates: {len(passing)}/{len(symbols)}")
 
     conn = init_db()
     try:
@@ -211,13 +236,14 @@ def _cmd_postmortem(last, write_obsidian):
         print(f"\nSaved to: {out_path}")
 
 
-def _cmd_recommend():
+def _cmd_recommend(strategy=None):
     from swing_lab.dashboard.actions import refresh_recommend
     from tabulate import tabulate
     import json
 
     print("Running gate + scan + Claude review + recommendation engine…")
-    print("(This may take several minutes — fetching data and calling Claude.)\n")
+    strategy_msg = f" [{strategy} strategy filter]" if strategy else ""
+    print(f"(This may take several minutes — fetching data and calling Claude.{strategy_msg})\n")
 
     def scan_prog(cur, total, sym):
         print(f"  Scanning {cur}/{total}: {sym}", end="\r", flush=True)
@@ -229,6 +255,7 @@ def _cmd_recommend():
         batch_id, recs = refresh_recommend(
             scan_progress=scan_prog,
             review_progress=review_prog,
+            strategy=strategy,
         )
     except RuntimeError as exc:
         print(f"\n{exc}")
@@ -246,7 +273,7 @@ def _cmd_recommend():
             pass
         label = "★ #1 PICK (synthesized)" if rec["is_synthesized"] else f"#{rec['rank']}"
         print(f"  {label} — {rec['symbol']}")
-        print(f"    Blended score:  {rec['blended_score']:.2f}/10")
+        print(f"    Blended score:  {rec['blended_score']:.2f}/100")
         print(f"    Deploy:         {rec['sizing_pct']*100:.0f}% of portfolio")
         if rec.get("entry_zone"):
             print(f"    Entry zone:     {rec['entry_zone']}")
@@ -304,6 +331,64 @@ def _cmd_rebalance():
     print(f"\n  (Gate sizing: {gate['sizing']*100:.0f}% — scale position sizes accordingly)")
 
 
+def _cmd_broker_login():
+    """One-time interactive setup: store Robinhood credentials and validate login."""
+    import getpass
+    from swing_lab.config import store_broker_credentials
+    from swing_lab.broker import RobinhoodClient
+
+    print("Robinhood login setup — credentials are stored in Windows Credential Manager.")
+    username = input("Robinhood email/username: ").strip()
+    password = getpass.getpass("Robinhood password: ")
+    totp_seed = getpass.getpass(
+        "TOTP seed (the base32 secret shown when you enabled 2FA, no spaces): "
+    ).strip()
+
+    store_broker_credentials(username, password, totp_seed)
+    print("Credentials stored. Validating login...")
+    try:
+        RobinhoodClient().authenticate()
+    except Exception as exc:
+        print(f"Login FAILED: {exc}")
+        print("Credentials were saved but could not be validated. "
+              "Re-run `swing-lab broker-login` to correct them.")
+        return
+    print("Login successful — session token cached. You can now run `swing-lab sync`.")
+
+
+def _cmd_sync(lookback_days=None):
+    """Pull positions + filled orders from Robinhood into swing.db."""
+    from swing_lab.config import SYNC_LOOKBACK_DAYS, REC_MATCH_WINDOW_DAYS
+    from swing_lab.db import init_db
+    from swing_lab.broker import RobinhoodClient
+    from swing_lab.sync import sync_account
+
+    lookback = lookback_days if lookback_days is not None else SYNC_LOOKBACK_DAYS
+
+    client = RobinhoodClient()
+    try:
+        client.authenticate()
+    except RuntimeError as exc:
+        print(str(exc))
+        return
+
+    conn = init_db()
+    try:
+        summary = sync_account(conn, client, lookback, REC_MATCH_WINDOW_DAYS)
+    finally:
+        conn.close()
+
+    print(f"\nSYNC COMPLETE (lookback {lookback}d)")
+    print(f"  Trades imported (new):   {summary['inserted']}")
+    print(f"  Trades closed (updated): {summary['updated']}")
+    print(f"  Already up to date:      {summary['skipped']}")
+    print(f"  Positions snapshot:      {summary['positions']} symbol(s)")
+    if summary["warnings"]:
+        print("\n  RECONCILIATION WARNINGS (snapshot is authoritative):")
+        for w in summary["warnings"]:
+            print(f"    - {w}")
+
+
 def _cmd_dashboard(port: int = 8501) -> None:
     import subprocess
     import sys
@@ -312,13 +397,66 @@ def _cmd_dashboard(port: int = 8501) -> None:
     subprocess.run([sys.executable, "-m", "streamlit", "run", str(app_path), "--server.port", str(port)])
 
 
-def _cmd_backtest(start: str, end: str) -> None:
+def _cmd_premarket_gap(min_gap, min_price, min_volume, top_n, json_out):
+    """Run pre-market gap scanner."""
+    from swing_lab.premarket import scan_premarket, format_scan_result, save_scan_result
+
+    print("Scanning for pre-market gappers...")
+    result = scan_premarket(
+        min_gap_pct=min_gap,
+        min_price=min_price,
+        min_volume=min_volume,
+        top_n=top_n,
+    )
+
+    if json_out:
+        from swing_lab.premarket import format_scan_json
+        print(format_scan_json(result))
+    else:
+        print()
+        print(format_scan_result(result))
+
+    # Save to results/ regardless
+    path = save_scan_result(result)
+    print(f"\nSaved to: {path}")
+
+
+def _cmd_filter(symbols, strategy, detail):
+    """Run strategy filter on specific symbols."""
+    from swing_lab.strategy_filter import (
+        filter_candidates, format_filter_result, format_detail,
+    )
+
+    print(f"Checking {len(symbols)} symbols against strategy: {strategy}...")
+    checks = filter_candidates(symbols, strategy=strategy)
+
+    if detail:
+        for sym in symbols:
+            if sym in checks:
+                print()
+                print(format_detail(checks[sym]))
+    else:
+        print()
+        print(format_filter_result(checks))
+
+
+def _cmd_backtest(start: str, end: str, with_gate: bool = False,
+                  rank_by: str = "sector", top_n: int = 20,
+                  universe: str = None) -> None:
     from swing_lab.backtest import walk_forward, report, plot_equity_curve
-    print(f"Running walk-forward backtest {start} → {end}")
-    print("WARNING: This fetches price history for ~500 symbols. Expect 10–30 minutes.")
-    returns_df = walk_forward(start=start, end=end)
+    config = f"rank={rank_by}, top={top_n}" + (", macro gate" if with_gate else "")
+    if universe:
+        config += f", custom universe ({len(universe.split(','))} tickers)"
+    print(f"Running walk-forward backtest {start} → {end}  [{config}]")
+    print("Survivorship-bias-free: uses point-in-time S&P 500 membership.")
+    print("Prices download as one batched panel — expect a few minutes total.")
+    returns_df = walk_forward(start=start, end=end, with_gate=with_gate,
+                              rank_by=rank_by, top_n=top_n)
     stats = report(returns_df)
-    out_path = plot_equity_curve(returns_df)
+    tag = ""
+    if rank_by != "sector" or top_n != 20:
+        tag = f"{rank_by}_top{top_n}"
+    out_path = plot_equity_curve(returns_df, tag=tag)
     print(f"\n{'='*50}")
     print("BACKTEST RESULTS")
     print(f"{'='*50}")
@@ -328,6 +466,20 @@ def _cmd_backtest(start: str, end: str) -> None:
     print(f"  Sharpe ratio:     {stats['sharpe']:.2f}")
     print(f"  Max drawdown:     {stats['max_drawdown']*100:.1f}%")
     print(f"  Hit rate:         {stats['hit_rate']*100:.1f}%")
+    if "spy_total_return" in stats:
+        print(f"\n  vs SPY benchmark:")
+        print(f"  SPY total:        {stats['spy_total_return']*100:.1f}%")
+        print(f"  SPY annualized:   {stats['spy_annualized_return']*100:.1f}%")
+        print(f"  SPY Sharpe:       {stats['spy_sharpe']:.2f}")
+        print(f"  SPY max drawdown: {stats['spy_max_drawdown']*100:.1f}%")
+        print(f"  Excess (ann.):    {stats['excess_annualized']*100:+.1f}%")
+        print(f"  Beat-SPY rate:    {stats['beat_spy_rate']*100:.1f}% of periods")
+    if "avg_gate_sizing" in stats:
+        print(f"\n  Macro gate exposure:")
+        print(f"  Avg sizing:       {stats['avg_gate_sizing']*100:.0f}%")
+        print(f"  FULL periods:     {stats['pct_full']*100:.1f}%")
+        print(f"  PARTIAL periods:  {stats['pct_partial']*100:.1f}%")
+        print(f"  Stand-down:       {stats['pct_stand_down']*100:.1f}%")
     print(f"\nEquity curve saved: {out_path}")
 
 
@@ -340,14 +492,26 @@ def main():
 
     # scan subcommand
     scan_p = sub.add_parser("scan", help="Run momentum scanner and output top picks")
+    scan_p.add_argument("--strategy", default=None,
+                        help="Optional strategy filter (e.g. 'trend-join-long')")
 
     # backtest subcommand
     bt_p = sub.add_parser("backtest", help="Run walk-forward backtest (2015–2024)")
     bt_p.add_argument("--start", default="2015-01-01", help="Start date YYYY-MM-DD")
     bt_p.add_argument("--end", default="2024-12-31", help="End date YYYY-MM-DD")
+    bt_p.add_argument("--with-gate", action="store_true", dest="with_gate",
+                      help="Apply the macro gate historically (sizing 1.0/0.6/0.0)")
+    bt_p.add_argument("--rank", choices=["sector", "raw"], default="sector", dest="rank_by",
+                      help="Momentum ranking: within-sector percentile (default) or raw universe-wide")
+    bt_p.add_argument("--top", type=int, default=20, dest="top_n",
+                      help="Number of picks held per period (default 20)")
+    bt_p.add_argument("--universe", default=None,
+                      help="Custom universe as comma-separated tickers (e.g. AAPL,MSFT,TSLA)")
 
     # review subcommand
     review_p = sub.add_parser("review", help="Run Claude analyst review on top candidates")
+    review_p.add_argument("--strategy", default=None,
+                          help="Optional strategy filter (e.g. 'trend-join-long')")
 
     # log subcommand group
     log_p = sub.add_parser("log", help="Trade log operations")
@@ -394,17 +558,54 @@ def main():
 
     # recommend
     rec_p = sub.add_parser("recommend", help="Run recommendation engine — top 3 trade picks")
+    rec_p.add_argument("--strategy", default=None,
+                       help="Optional strategy filter (e.g. 'trend-join-long')")
+
+    # premarket-gap
+    pm_p = sub.add_parser("premarket-gap", help="Scan for pre-market gap candidates")
+    pm_p.add_argument("--min-gap", type=float, default=5.0,
+                      help="Minimum gap percentage (default: 5.0)")
+    pm_p.add_argument("--min-price", type=float, default=3.0,
+                      help="Minimum price (default: 3.0)")
+    pm_p.add_argument("--min-volume", type=int, default=50000,
+                      help="Minimum pre-market volume (default: 50000)")
+    pm_p.add_argument("--top", type=int, default=10, dest="top_n",
+                      help="Number of top gappers to show (default: 10)")
+    pm_p.add_argument("--json", action="store_true", dest="json_out",
+                      help="Output as JSON")
+
+    # filter subcommand
+    filter_p = sub.add_parser("filter", help="Run strategy filter on a set of symbols")
+    filter_p.add_argument("symbols", nargs="+",
+                          help="Ticker symbols to check (e.g. AAPL MSFT TSLA)")
+    filter_p.add_argument("--strategy", default="trend-join-long",
+                          help="Strategy name (default: trend-join-long). "
+                               "Available: trend-join-long")
+    filter_p.add_argument("--detail", action="store_true",
+                          help="Show full per-criterion detail for each symbol")
+
+    # broker-login subcommand
+    broker_login_p = sub.add_parser(
+        "broker-login", help="Store Robinhood credentials and validate login (one-time)")
+
+    # sync subcommand
+    sync_p = sub.add_parser(
+        "sync", help="Import Robinhood positions + filled orders into swing.db")
+    sync_p.add_argument("--lookback-days", type=int, default=None, dest="lookback_days",
+                        help="How far back to pull filled orders (default: config)")
 
     args = parser.parse_args()
 
     if args.command == "gate":
         _cmd_gate()
     elif args.command == "scan":
-        _cmd_scan()
+        _cmd_scan(args.strategy if hasattr(args, 'strategy') else None)
     elif args.command == "backtest":
-        _cmd_backtest(args.start, args.end)
+        _cmd_backtest(args.start, args.end, with_gate=args.with_gate,
+                      rank_by=args.rank_by, top_n=args.top_n,
+                      universe=args.universe)
     elif args.command == "review":
-        _cmd_review()
+        _cmd_review(args.strategy if hasattr(args, 'strategy') else None)
     elif args.command == "log":
         if args.log_command == "open":
             _cmd_log_open(args.symbol, args.shares, args.price, args.thesis, args.scan_id)
@@ -425,4 +626,19 @@ def main():
     elif args.command == "rebalance":
         _cmd_rebalance()
     elif args.command == "recommend":
-        _cmd_recommend()
+        _cmd_recommend(args.strategy if hasattr(args, 'strategy') else None)
+    elif args.command == "premarket-gap":
+        _cmd_premarket_gap(args.min_gap, args.min_price, args.min_volume,
+                           args.top_n, args.json_out)
+    elif args.command == "filter":
+        _cmd_filter(args.symbols, args.strategy, args.detail)
+    elif args.command == "broker-login":
+        _cmd_broker_login()
+    elif args.command == "sync":
+        _cmd_sync(args.lookback_days)
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

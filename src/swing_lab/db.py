@@ -115,6 +115,25 @@ def init_db() -> sqlite3.Connection:
             messages_json TEXT NOT NULL,
             snapshot_json TEXT
         );
+        CREATE TABLE IF NOT EXISTS positions (
+            position_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            synced_at          TEXT    NOT NULL,
+            broker             TEXT    NOT NULL,
+            symbol             TEXT    NOT NULL,
+            quantity           REAL    NOT NULL,
+            average_buy_price  REAL,
+            market_value       REAL,
+            last_price         REAL,
+            UNIQUE(broker, symbol)
+        );
+        CREATE TABLE IF NOT EXISTS account_snapshots (
+            snapshot_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+            synced_at     TEXT    NOT NULL,
+            broker        TEXT    NOT NULL,
+            total_equity  REAL,
+            buying_power  REAL,
+            cash          REAL
+        );
     """)
     # Safe migrations for existing DBs
     for migration in [
@@ -128,6 +147,11 @@ def init_db() -> sqlite3.Connection:
         "ALTER TABLE recommendations ADD COLUMN support REAL",
         "ALTER TABLE recommendations ADD COLUMN stop_price REAL",
         "ALTER TABLE recommendations ADD COLUMN target REAL",
+        "ALTER TABLE trades ADD COLUMN broker TEXT",
+        "ALTER TABLE trades ADD COLUMN broker_order_ids_json TEXT",
+        "ALTER TABLE trades ADD COLUMN source TEXT",
+        "ALTER TABLE trades ADD COLUMN mode TEXT DEFAULT 'live'",
+        "ALTER TABLE trades ADD COLUMN fees REAL",
     ]:
         try:
             conn.execute(migration)
@@ -174,10 +198,14 @@ def save_gate_run(conn, gate: dict) -> int:
     return cursor.lastrowid
 
 
-def save_reviews(conn, scan_id: int, reviews_df) -> None:
-    """Insert Claude review results into the reviews table."""
+def save_reviews(conn, scan_id: int, reviews_df) -> dict:
+    """Insert Claude review results into the reviews table.
+
+    Returns {symbol: review_id} so callers can link recommendations to reviews.
+    """
     run_at = datetime.now(timezone.utc).isoformat()
     cursor = conn.cursor()
+    review_ids: dict = {}
     for _, row in reviews_df.iterrows():
         cursor.execute(
             """INSERT INTO reviews
@@ -195,7 +223,9 @@ def save_reviews(conn, scan_id: int, reviews_df) -> None:
                 row.get("claude_summary"),
             ),
         )
+        review_ids[row.get("symbol")] = cursor.lastrowid
     conn.commit()
+    return review_ids
 
 
 def save_recommendations(conn, scan_id: int, recs: list[dict]) -> int:
@@ -259,6 +289,14 @@ def save_recommendations(conn, scan_id: int, recs: list[dict]) -> int:
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 values,
             )
+
+    # Remove stale leftovers: if an earlier run today produced more recs than
+    # this one, the higher ranks would otherwise survive and mix into today's
+    # batch when loaded back.
+    cursor.execute(
+        "DELETE FROM recommendations WHERE date(created_at) = ? AND rank > ?",
+        (today_utc, len(recs)),
+    )
     conn.commit()
     return batch_id
 

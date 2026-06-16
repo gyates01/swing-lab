@@ -135,6 +135,25 @@ def init_db() -> sqlite3.Connection:
             buying_power  REAL,
             cash          REAL
         );
+        CREATE TABLE IF NOT EXISTS orders (
+            order_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at    TEXT    NOT NULL,
+            mode          TEXT    NOT NULL DEFAULT 'paper',
+            side          TEXT    NOT NULL,
+            symbol        TEXT    NOT NULL,
+            shares        REAL    NOT NULL,
+            est_price     REAL,
+            est_notional  REAL,
+            reason        TEXT,
+            rec_id        INTEGER,
+            trade_id      INTEGER,
+            status        TEXT    NOT NULL DEFAULT 'pending',
+            guardrail_json TEXT,
+            decided_at    TEXT,
+            filled_at     TEXT,
+            fill_price    REAL,
+            notes         TEXT
+        );
     """)
     # Safe migrations for existing DBs
     for migration in [
@@ -520,6 +539,17 @@ def load_positions(conn, broker: str) -> list[dict]:
            FROM positions WHERE broker = ? ORDER BY symbol""",
         (broker,),
     )
+    cols = [d[0] for d in cursor.description]
+    return [dict(zip(cols, row)) for row in cursor.fetchall()]
+
+
+def load_latest_scan_picks(conn) -> list[dict]:
+    """Return the most recent scan's picks, highest rank_score first."""
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT symbol, sector, momentum, rank_score FROM scan_picks
+           WHERE scan_id = (SELECT MAX(scan_id) FROM scan_picks)
+           ORDER BY rank_score DESC""")
     cols = [d[0] for d in cursor.description]
     return [dict(zip(cols, row)) for row in cursor.fetchall()]
 

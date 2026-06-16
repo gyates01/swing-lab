@@ -93,10 +93,16 @@ class RobinhoodClient:
         return fills
 
     def get_account_snapshot(self) -> dict:
-        """Account equity/buying-power/cash -> {total_equity, buying_power, cash}."""
-        acct = rh.load_phoenix_account()
+        """Account equity/buying-power/cash -> {total_equity, buying_power, cash}.
+
+        Sourced from api.robinhood.com (portfolio + account profiles). The phoenix
+        unified endpoint exposes the same data but sits behind a TLS-fingerprinting
+        WAF that refuses non-browser clients, so it is unreachable from here.
+        """
+        portfolio = rh.load_portfolio_profile() or {}
+        account = rh.load_account_profile() or {}
         return {
-            "total_equity": _f((acct.get("total_equity") or {}).get("amount")),
-            "buying_power": _f((acct.get("account_buying_power") or {}).get("amount")),
-            "cash": _f((acct.get("uninvested_cash") or {}).get("amount")),
+            "total_equity": _f(portfolio.get("equity")),
+            "buying_power": _f(account.get("buying_power")),
+            "cash": _f(account.get("cash")),
         }

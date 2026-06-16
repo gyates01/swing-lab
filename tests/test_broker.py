@@ -9,11 +9,14 @@ def _fake_rh(**overrides):
     mod.build_holdings = overrides.get("build_holdings", lambda: {})
     mod.get_all_stock_orders = overrides.get("get_all_stock_orders", lambda: [])
     mod.get_symbol_by_url = overrides.get("get_symbol_by_url", lambda url: "AAPL")
-    mod.load_phoenix_account = overrides.get(
-        "load_phoenix_account",
-        lambda: {"total_equity": {"amount": "5000.0"},
-                 "account_buying_power": {"amount": "1200.0"},
-                 "uninvested_cash": {"amount": "300.0"}},
+    mod.load_portfolio_profile = overrides.get(
+        "load_portfolio_profile",
+        lambda: {"equity": "5000.0", "market_value": "4700.0"},
+    )
+    mod.load_account_profile = overrides.get(
+        "load_account_profile",
+        lambda: {"buying_power": "1200.0", "cash": "300.0",
+                 "portfolio_cash": "300.0"},
     )
     return mod
 

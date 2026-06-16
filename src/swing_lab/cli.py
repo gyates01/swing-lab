@@ -396,6 +396,36 @@ def _cmd_sync(lookback_days=None):
             print(f"    - {w}")
 
 
+def _cmd_propose():
+    import json
+    from swing_lab.db import init_db
+    from swing_lab.execution.proposals import generate_proposals
+    from tabulate import tabulate
+
+    conn = init_db()
+    try:
+        result = generate_proposals(conn)
+    finally:
+        conn.close()
+
+    for w in result["warnings"]:
+        print(f"  ! {w}")
+
+    created = result["created"]
+    if not created:
+        print("\nNo new proposals. (Nothing changed since the last run, or no recs/scan saved.)")
+        return
+
+    rows = []
+    for o in created:
+        flags = "; ".join(json.loads(o["guardrail_json"])) or "ok"
+        rows.append([o["order_id"], o["side"], o["symbol"],
+                     f"{o['shares']:.4f}", f"${o['est_notional']:.2f}", o["reason"], flags])
+    print(f"\n{len(created)} proposal(s) queued as pending:\n")
+    print(tabulate(rows, headers=["id", "side", "symbol", "shares", "notional", "reason", "guardrails"]))
+    print("\nApprove/reject and execute from the dashboard (page 7 — Execution).")
+
+
 def _cmd_dashboard(port: int = 8501) -> None:
     import subprocess
     import sys
@@ -601,6 +631,10 @@ def main():
     sync_p.add_argument("--lookback-days", type=int, default=None, dest="lookback_days",
                         help="How far back to pull filled orders (default: config)")
 
+    # propose subcommand
+    propose_p = sub.add_parser(
+        "propose", help="Generate paper-trade proposals into the order queue")
+
     args = parser.parse_args()
 
     if args.command == "gate":
@@ -643,6 +677,8 @@ def main():
         _cmd_broker_login()
     elif args.command == "sync":
         _cmd_sync(args.lookback_days)
+    elif args.command == "propose":
+        _cmd_propose()
     else:
         parser.print_help()
 

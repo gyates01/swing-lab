@@ -22,15 +22,25 @@ def sync_account(conn, client, lookback_days: int, match_window_days: int) -> di
     since = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).isoformat()
 
     positions = client.get_positions()
-    snapshot = client.get_account_snapshot()
     fills = client.get_filled_orders(since=since)
     episodes = reconstruct_episodes(fills)
+
+    # The account snapshot (equity/buying-power/cash) is informational and lives
+    # behind phoenix.robinhood.com, which can fail TLS in some environments. Treat
+    # it as best-effort so a snapshot failure never aborts the core trade import.
+    snapshot = None
+    snapshot_warning = None
+    try:
+        snapshot = client.get_account_snapshot()
+    except Exception as exc:
+        snapshot_warning = f"Account snapshot unavailable (skipped): {exc}"
 
     inserted = updated = skipped = 0
 
     with conn:  # atomic: commits on success, rolls back on exception
         replace_positions(conn, BROKER, positions)
-        save_account_snapshot(conn, BROKER, snapshot)
+        if snapshot is not None:
+            save_account_snapshot(conn, BROKER, snapshot)
 
         for ep in episodes:
             existing = find_trade_by_opening_order(conn, BROKER, ep["opening_order_id"])
@@ -47,6 +57,9 @@ def sync_account(conn, client, lookback_days: int, match_window_days: int) -> di
 
         open_eps = [e for e in episodes if e["exit_price"] is None]
         warnings = reconcile(open_eps, positions)
+
+    if snapshot_warning:
+        warnings = [snapshot_warning, *warnings]
 
     return {
         "inserted": inserted,

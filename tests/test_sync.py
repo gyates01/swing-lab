@@ -111,6 +111,29 @@ def test_sync_populates_positions_snapshot(db_conn):
     assert summary["positions"] == 1
 
 
+class _SnapshotFailClient(FakeClient):
+    """Positions/fills work, but the account snapshot endpoint fails (e.g. the
+    phoenix.robinhood.com TLS handshake failure seen in some environments)."""
+    def get_account_snapshot(self):
+        raise RuntimeError("phoenix handshake failure")
+
+
+def test_sync_continues_when_account_snapshot_fails(db_conn):
+    client = _SnapshotFailClient(
+        positions=[],
+        fills=[_fill("AAPL", "buy", 10, 150.0, 1, "o1"),
+               _fill("AAPL", "sell", 10, 165.0, 5, "o2")],
+    )
+    summary = sync_account(db_conn, client, 90, 5)
+    # Core import (positions + fills -> episodes) still completes.
+    assert summary["inserted"] == 1
+    # The snapshot failure is surfaced as a warning, not an exception.
+    assert any("snapshot" in w.lower() for w in summary["warnings"])
+    # Nothing is persisted to account_snapshots when the fetch fails.
+    assert db_conn.execute(
+        "SELECT COUNT(*) FROM account_snapshots").fetchone()[0] == 0
+
+
 def test_sync_reconciliation_warns_on_mismatch(db_conn):
     # Reconstruction says 10 open; snapshot says 8 -> warning
     client = FakeClient(

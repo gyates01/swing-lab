@@ -179,8 +179,8 @@ shown before approval) AND **execute-time** (re-checked against fresh state).
 | Per-position cap | `MAX_POSITION_PCT` (0.08) | Re-verify `notional ≤ 8% × equity` (belt-and-suspenders; already in sizing). |
 | Min cash reserve | `CASH_RESERVE_PCT` | Buys only: block if `cash − notional < CASH_RESERVE_PCT × equity`. |
 | Max open positions | `MAX_OPEN_POSITIONS` | Buys only: block if opening a *new* symbol exceeds the cap. |
-| Daily order count | `MAX_ORDERS_PER_DAY` | Block if today's filled+approved order count ≥ cap. |
-| Daily notional | `MAX_NOTIONAL_PER_DAY_PCT` | Block if today's cumulative notional + this notional > `MAX_NOTIONAL_PER_DAY_PCT × equity`. |
+| Daily order count | `MAX_ORDERS_PER_DAY` | Block if today's *filled* order count ≥ cap. Counting filled-only (not approved) avoids double-counting the order under execution, which is already `approved` when the execute-time re-check runs. |
+| Daily notional | `MAX_NOTIONAL_PER_DAY_PCT` | Block if today's *filled* notional + this notional > `MAX_NOTIONAL_PER_DAY_PCT × equity`. Filled-only, same reasoning as the count cap. |
 
 - Sells are exempt from cash-reserve / max-positions / per-position checks
   (closing reduces risk). Sells still respect kill switch, RTH, daily limits.

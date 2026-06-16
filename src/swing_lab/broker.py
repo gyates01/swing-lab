@@ -55,9 +55,12 @@ class RobinhoodClient:
         holdings = rh.build_holdings()
         positions = []
         for symbol, h in holdings.items():
+            quantity = _f(h.get("quantity"))
+            if quantity is None or quantity <= 0:
+                continue  # fully-exited symbols come back with quantity 0
             positions.append({
                 "symbol": symbol,
-                "quantity": _f(h.get("quantity")),
+                "quantity": quantity,
                 "average_buy_price": _f(h.get("average_buy_price")),
                 "market_value": _f(h.get("equity")),
                 "last_price": _f(h.get("price")),

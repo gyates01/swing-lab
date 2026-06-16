@@ -77,6 +77,20 @@ def test_get_positions_normalizes_holdings(monkeypatch):
                           "last_price": 160.0}]
 
 
+def test_get_positions_excludes_zero_quantity_holdings(monkeypatch):
+    """build_holdings() returns fully-exited symbols with quantity 0 — not real holdings."""
+    holdings = {
+        "AAPL": {"quantity": "10.0000", "average_buy_price": "150.00",
+                 "equity": "1600.00", "price": "160.00"},
+        "SNDK": {"quantity": "0.0000", "average_buy_price": "0.00",
+                 "equity": "0.00", "price": "0.00"},
+    }
+    from swing_lab import broker
+    monkeypatch.setattr(broker, "rh", _fake_rh(build_holdings=lambda: holdings))
+    positions = broker.RobinhoodClient().get_positions()
+    assert [p["symbol"] for p in positions] == ["AAPL"]
+
+
 def test_get_filled_orders_filters_and_normalizes(monkeypatch):
     orders = [
         {"state": "filled", "side": "buy", "average_price": "150.00",

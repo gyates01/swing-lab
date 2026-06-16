@@ -44,6 +44,26 @@ def test_authenticate_passes_totp_code(monkeypatch):
     assert captured["mfa_code"].isdigit() and len(captured["mfa_code"]) == 6
 
 
+def test_authenticate_device_approval_when_no_totp(monkeypatch):
+    """Blank TOTP seed -> login without mfa_code, letting robin_stocks drive the
+    Robinhood mobile-app approval prompt."""
+    captured = {}
+
+    def fake_login(**kw):
+        captured.update(kw)
+        return {"access_token": "tok"}
+
+    monkeypatch.setattr("keyring.get_password",
+                        lambda s, k: {"username": "u", "password": "p",
+                                      "totp_seed": ""}[k])
+    from swing_lab import broker
+    monkeypatch.setattr(broker, "rh", _fake_rh(login=fake_login))
+    broker.RobinhoodClient().authenticate()
+    assert captured["username"] == "u"
+    assert captured["password"] == "p"
+    assert "mfa_code" not in captured
+
+
 def test_get_positions_normalizes_holdings(monkeypatch):
     holdings = {
         "AAPL": {"quantity": "10.0000", "average_buy_price": "150.00",

@@ -344,11 +344,15 @@ def _cmd_broker_login():
     username = input("Robinhood email/username: ").strip()
     password = getpass.getpass("Robinhood password: ")
     totp_seed = getpass.getpass(
-        "TOTP seed (the base32 secret shown when you enabled 2FA, no spaces): "
+        "TOTP seed (base32 secret from authenticator-app 2FA, no spaces) — "
+        "leave blank if you approve logins in the Robinhood mobile app: "
     ).strip()
 
     store_broker_credentials(username, password, totp_seed)
     print("Credentials stored. Validating login...")
+    if not totp_seed:
+        print("No TOTP seed entered — using mobile-app approval. "
+              "Watch your phone for an approval prompt now.")
     try:
         RobinhoodClient().authenticate()
     except Exception as exc:

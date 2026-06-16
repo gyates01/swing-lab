@@ -26,3 +26,22 @@ def test_get_missing_credentials_raises_actionable_error(monkeypatch):
     from swing_lab import config
     with pytest.raises(RuntimeError, match="broker-login"):
         config.get_broker_credentials()
+
+
+def test_empty_totp_seed_is_allowed_for_device_approval(monkeypatch):
+    """A blank TOTP seed means device-approval 2FA — username/password are still required."""
+    store = {}
+    monkeypatch.setattr(
+        "keyring.set_password",
+        lambda service, key, val: store.__setitem__((service, key), val),
+    )
+    monkeypatch.setattr(
+        "keyring.get_password",
+        lambda service, key: store.get((service, key)),
+    )
+    from swing_lab import config
+    config.store_broker_credentials("user@example.com", "pw123", "")
+    creds = config.get_broker_credentials()
+    assert creds["username"] == "user@example.com"
+    assert creds["password"] == "pw123"
+    assert creds["totp_seed"] == ""

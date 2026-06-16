@@ -23,20 +23,31 @@ class RobinhoodClient:
         self._authenticated = False
 
     def authenticate(self) -> None:
-        """Log in using keyring credentials + a generated TOTP code.
+        """Log in using keyring credentials.
 
-        robin_stocks caches the session token on disk, so MFA is not re-triggered
+        If a TOTP seed is stored, a 6-digit code is generated and passed for
+        fully-headless login. If the seed is blank, no code is passed: robin_stocks
+        falls back to Robinhood's device-approval challenge (a push to the mobile
+        app), prompting you to approve the login on your phone.
+
+        robin_stocks caches the session token on disk, so 2FA is not re-triggered
         on every run. Raises an actionable error if credentials are missing.
         """
-        import pyotp
         creds = get_broker_credentials()  # raises RuntimeError -> "run broker-login"
-        mfa_code = pyotp.TOTP(creds["totp_seed"]).now()
-        rh.login(
-            username=creds["username"],
-            password=creds["password"],
-            mfa_code=mfa_code,
-            store_session=True,
-        )
+        if creds["totp_seed"]:
+            import pyotp
+            rh.login(
+                username=creds["username"],
+                password=creds["password"],
+                mfa_code=pyotp.TOTP(creds["totp_seed"]).now(),
+                store_session=True,
+            )
+        else:
+            rh.login(
+                username=creds["username"],
+                password=creds["password"],
+                store_session=True,
+            )
         self._authenticated = True
 
     def get_positions(self) -> list[dict]:

@@ -82,11 +82,17 @@ def store_broker_credentials(username: str, password: str, totp_seed: str) -> No
 
 
 def get_broker_credentials() -> dict:
-    """Return {username, password, totp_seed} from the keyring, or raise if unset."""
+    """Return {username, password, totp_seed} from the keyring, or raise if unset.
+
+    Only username and password are required. A blank `totp_seed` is valid: it
+    means the account uses device-approval (mobile-app prompt) 2FA rather than an
+    authenticator-app TOTP secret.
+    """
     import keyring
     creds = {key: keyring.get_password(KEYRING_SERVICE, key) for key in _CRED_KEYS}
-    if not all(creds.values()):
+    if not creds["username"] or not creds["password"]:
         raise RuntimeError(
             "Robinhood credentials not found. Run `swing-lab broker-login` first."
         )
+    creds["totp_seed"] = creds["totp_seed"] or ""
     return creds

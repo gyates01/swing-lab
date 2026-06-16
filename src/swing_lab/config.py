@@ -47,6 +47,15 @@ KEYRING_SERVICE = "swing_lab_robinhood"
 SYNC_LOOKBACK_DAYS = 90        # how far back `sync` pulls filled orders
 REC_MATCH_WINDOW_DAYS = 5      # trading-day window to link a trade to a recommendation
 
+# --- Execution (paper trading) ---
+PAPER_STARTING_CASH = 10000.0       # Paper bankroll, fixed (decoupled from the small real account)
+CASH_RESERVE_PCT = 0.10             # Min cash kept as fraction of equity (deploy up to 90%)
+MAX_OPEN_POSITIONS = 8              # Cap on concurrent open paper positions
+MAX_ORDERS_PER_DAY = 12            # Daily order-count cap (above MAX_OPEN_POSITIONS for rebalance headroom)
+MAX_NOTIONAL_PER_DAY_PCT = 0.30    # Daily cumulative notional cap, as fraction of equity
+EXECUTION_KILL_SWITCH = False      # Hard stop — blocks all orders when True
+EXECUTION_MODE = "paper"           # Active fill backend selector
+
 # Outcome capture options (used by dashboard + CLI)
 OUTCOME_THESIS_OPTIONS = ("yes", "partial", "no", "unclear")
 OUTCOME_DRIVER_OPTIONS = (

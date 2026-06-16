@@ -119,16 +119,15 @@ Touches to existing files:
 
 | Constant | Default | Purpose |
 |---|---|---|
-| `PAPER_STARTING_CASH` | latest synced equity, fallback `10000.0` | Paper bankroll anchor (configurable). |
-| `CASH_RESERVE_PCT` | `0.10` | Min cash kept as fraction of equity. |
+| `PAPER_STARTING_CASH` | `10000.0` | Paper bankroll, fixed (not tied to the small real account, so paper results aren't constrained by it). |
+| `CASH_RESERVE_PCT` | `0.10` | Min cash kept as fraction of equity (deploy up to 90%). |
 | `MAX_OPEN_POSITIONS` | `8` | Cap on concurrent open paper positions. |
-| `MAX_ORDERS_PER_DAY` | `10` | Daily order-count cap. |
+| `MAX_ORDERS_PER_DAY` | `12` | Daily order-count cap. Set above `MAX_OPEN_POSITIONS` so a full 8-position build (8 buys) plus same-day rebalance closes fit without hitting the cap mid-rebalance. |
 | `MAX_NOTIONAL_PER_DAY_PCT` | `0.30` | Daily cumulative notional cap, as fraction of equity. |
 | `EXECUTION_KILL_SWITCH` | `False` | Hard stop — blocks all orders when `True`. |
 | `EXECUTION_MODE` | `'paper'` | Active fill backend selector. |
 
-All defaults are tunable in `config.py`; the user may adjust before or after the
-first run.
+All defaults are tunable in `config.py`.
 
 `MAX_POSITION_PCT` (0.08) already exists and is reused.
 
@@ -268,10 +267,10 @@ stop.
 - Scheduled / autonomous triggering (Phase 4).
 - Position monitoring loop (Phase 2).
 
-## Open items to confirm at plan time
+## Settled decisions
 
-- The guardrail defaults above (`CASH_RESERVE_PCT=0.10`, `MAX_OPEN_POSITIONS=8`,
-  `MAX_ORDERS_PER_DAY=10`, `MAX_NOTIONAL_PER_DAY_PCT=0.30`) are starting points —
-  confirm or adjust the concrete numbers.
-- `PAPER_STARTING_CASH` reads the latest `account_snapshots.total_equity` at
-  first run; confirm the `10000.0` fallback when no snapshot exists.
+- Guardrail values locked: `CASH_RESERVE_PCT=0.10`, `MAX_OPEN_POSITIONS=8`,
+  `MAX_ORDERS_PER_DAY=12`, `MAX_NOTIONAL_PER_DAY_PCT=0.30`.
+- `PAPER_STARTING_CASH=10000.0`, fixed — deliberately decoupled from the small
+  real account so paper position sizes and P&L are large enough to evaluate the
+  strategy.

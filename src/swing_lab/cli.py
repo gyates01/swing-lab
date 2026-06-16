@@ -291,8 +291,8 @@ def _cmd_rebalance():
     from swing_lab.universe import fetch_sp500
     from swing_lab.scanner import score_universe, top_n_picks
     from swing_lab.macro_gate import compute_gate
-    from swing_lab.db import init_db
-    from swing_lab.tradelog import open_trades
+    from swing_lab.db import init_db, load_positions
+    from swing_lab.config import BROKER
     from tabulate import tabulate
 
     print("Fetching macro gate...")
@@ -307,13 +307,16 @@ def _cmd_rebalance():
     scored = score_universe(universe)
     picks = top_n_picks(scored, gate["sizing"])
 
-    # Get open trades from DB
+    # Get real held positions from the latest Robinhood sync snapshot
     conn = init_db()
     try:
-        current_open = open_trades(conn)
+        held = load_positions(conn, BROKER)
     finally:
         conn.close()
-    open_positions = {t["symbol"] for t in current_open}
+    open_positions = {p["symbol"] for p in held}
+    if not held:
+        print("\n(No synced positions found — run `swing-lab sync` first. "
+              "Treating account as flat.)")
 
     # New targets = top picks symbols
     new_targets = set(picks["symbol"].tolist())

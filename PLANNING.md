@@ -13,6 +13,7 @@ of any kind.**
 | Milestone | Status | Date |
 |---|---|---|
 | Robinhood Broker Foundation (read-only sync) | ✅ Complete | 2026-06-15 |
+| Paper Execution Core (propose → approve → execute) | ✅ Complete | 2026-06-16 |
 
 ### Task breakdown (all complete 2026-06-15)
 
@@ -76,3 +77,44 @@ of any kind.**
 - **Task 8 reconciliation** — add within-tolerance and multi-discrepancy tests.
 - **Task 9 broker** — harden ISO-timestamp comparison in `get_filled_orders`;
   add a sell-side fill normalization test.
+
+---
+
+# Sub-project #2 — Paper Execution Core
+
+A `propose → approve → execute` pipeline for **paper** trading. The persisted
+`orders` table is the single source of truth; the paper portfolio is **derived**
+from `trades` where `mode='paper'` (no separate portfolio table). A 7-check
+guardrail engine runs at both propose-time and execute-time. Fully decoupled
+from the small real Robinhood account (fixed $10,000 paper bankroll).
+
+- Full plan: `docs/superpowers/plans/2026-06-16-execution-paper-core.md`
+- Design spec: `docs/superpowers/specs/2026-06-16-execution-paper-core-design.md`
+
+### Task breakdown (all complete 2026-06-16)
+
+| # | Task | Commit |
+|---|---|---|
+| 1 | Execution config constants | 4fbbad0 |
+| 2 | `orders` table DDL + `load_latest_scan_picks` | 9c31049 |
+| 3 | `open_trade` `mode` parameter | 29c7f4e |
+| 4 | Execution package + `quotes.get_quote` | efed4a6 |
+| 5 | Order queue CRUD (`orders.py`) | 9c7d05a |
+| 6 | Paper account derivation (`paper_account.py`) | ad266a0 |
+| 7 | Guardrail engine (`guardrails.py`) | 0097e6b |
+| 8 | Proposal generation (`proposals.py`) | 4f9e3bb |
+| 9 | Executor (`executor.py`) | 34f96fb |
+| 10 | CLI `propose` command | 60fd3fa |
+| 11 | Dashboard Execution page (page 7) | 9880e65 |
+| 12 | Full-suite verification + final review | (this commit) |
+
+### Verification status
+
+- ✅ Full test suite: 93 passed (40 new execution-engine tests across 7 new
+  test files), zero live API calls.
+- ✅ End-to-end paper round-trip (propose → approve → execute → dedup) verified
+  programmatically against a temp DB.
+- ✅ Read-only invariant: `src/swing_lab/execution/` contains no `robin_stocks`
+  or order-placement calls.
+- ⏳ **Dashboard browser smoke (user action):** open page 7 (Execution), confirm
+  the queue/approve/reject/execute flow and the paper-portfolio panel render.

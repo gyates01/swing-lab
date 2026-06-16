@@ -12,15 +12,16 @@ def open_trade(
     scan_id: int | None = None,
     thesis: str = "",
     rec_id: int | None = None,
+    mode: str = "live",
 ) -> int:
     """Insert a new open trade. Return trade_id."""
     opened_at = datetime.now(timezone.utc).isoformat()
     cursor = conn.cursor()
     cursor.execute(
         """INSERT INTO trades
-           (opened_at, symbol, side, shares, entry_price, scan_id, rec_id, thesis_text)
-           VALUES (?, ?, 'long', ?, ?, ?, ?, ?)""",
-        (opened_at, symbol, shares, entry_price, scan_id, rec_id, thesis),
+           (opened_at, symbol, side, shares, entry_price, scan_id, rec_id, thesis_text, mode)
+           VALUES (?, ?, 'long', ?, ?, ?, ?, ?, ?)""",
+        (opened_at, symbol, shares, entry_price, scan_id, rec_id, thesis, mode),
     )
     conn.commit()
     return cursor.lastrowid

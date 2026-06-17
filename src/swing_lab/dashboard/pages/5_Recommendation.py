@@ -326,19 +326,6 @@ else:
                     unsafe_allow_html=True,
                 )
 
-        if top.get("rec_id"):
-            if st.button(
-                f"Open trade from this pick — {symbol}",
-                type="primary",
-                key="open_from_rec_btn",
-            ):
-                st.session_state["open_from_rec"] = {
-                    "symbol": symbol,
-                    "sizing_pct": top["sizing_pct"],
-                    "rec_id": top["rec_id"],
-                }
-                st.switch_page("pages/4_Trade_Log.py")
-
     if second or third:
         st.markdown(section_header_html("Runner-Ups"), unsafe_allow_html=True)
         col2, col3 = st.columns(2)

@@ -14,6 +14,7 @@ of any kind.**
 |---|---|---|
 | Robinhood Broker Foundation (read-only sync) | ✅ Complete | 2026-06-15 |
 | Paper Execution Core (propose → approve → execute) | ✅ Complete | 2026-06-16 |
+| Sync-Only Trade Log (manual entry removed, postmortem scoped) | ✅ Complete | 2026-06-16 |
 
 ### Task breakdown (all complete 2026-06-15)
 
@@ -118,3 +119,22 @@ from the small real Robinhood account (fixed $10,000 paper bankroll).
   or order-placement calls.
 - ⏳ **Dashboard browser smoke (user action):** open page 7 (Execution), confirm
   the queue/approve/reject/execute flow and the paper-portfolio panel render.
+
+---
+
+# Sub-project #3 — Sync-Only Trade Log
+
+The Robinhood sync + paper engine are now the only writers of the trade log.
+Manual entry removed (CLI `log open`/`close`, dashboard Open/Close/Edit/Delete,
+Recommendation "Open trade from this pick"). Postmortem scoped to strategy
+trades (`rec_id IS NOT NULL OR mode='paper'`) so non-strategy account holdings
+(e.g. a VOO index hold) no longer pollute the analysis. Phantom manual trade #3
+cleaned up. `open_trade`/`close_trade` plumbing retained for sync + paper engine.
+
+- Spec: `docs/superpowers/specs/2026-06-16-sync-only-trade-log-design.md`
+- Plan: `docs/superpowers/plans/2026-06-16-sync-only-trade-log.md`
+
+### Verification
+- ✅ Full suite green (Task 1 & 2 added postmortem-scope + CLI-removal tests).
+- ⏳ Dashboard browser smoke (user action): Trade Log page renders read-only
+  (no Open/Close/Edit/Delete); Recommendation page has no "Open trade" button.

@@ -406,6 +406,7 @@ def load_trades_with_context(conn, limit: int = 30) -> list[dict]:
            LEFT JOIN recommendations r ON t.rec_id = r.rec_id
            LEFT JOIN trade_outcomes o ON t.trade_id = o.trade_id
            WHERE t.exit_price IS NOT NULL
+             AND (t.rec_id IS NOT NULL OR t.mode = 'paper')
            ORDER BY t.trade_id DESC
            LIMIT ?""",
         (limit,),

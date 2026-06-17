@@ -178,6 +178,7 @@ def load_trade_outcomes(limit: int = 20) -> pd.DataFrame:
            FROM trades t
            LEFT JOIN trade_outcomes o ON t.trade_id = o.trade_id
            WHERE t.exit_price IS NOT NULL
+             AND (t.rec_id IS NOT NULL OR t.mode = 'paper')
            ORDER BY t.trade_id DESC
            LIMIT ?""",
         params=(limit,),

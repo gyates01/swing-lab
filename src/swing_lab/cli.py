@@ -134,46 +134,6 @@ def _cmd_review(strategy=None):
     print(f"\nReview for scan #{scan_id} saved to swing.db")
 
 
-def _cmd_log_open(symbol, shares, price, thesis, scan_id):
-    from swing_lab.db import init_db
-    from swing_lab.tradelog import open_trade
-    conn = init_db()
-    try:
-        trade_id = open_trade(conn, symbol.upper(), shares, price, scan_id, thesis)
-    finally:
-        conn.close()
-    print(f"Trade #{trade_id} opened: {symbol.upper()} {shares} shares @ ${price:.2f}")
-
-
-def _cmd_log_close(trade_id, exit_price, reason, thesis_validated=None,
-                   exit_driver=None, macro_aligned=None, notes=None):
-    import json
-    from swing_lab.db import init_db
-    from swing_lab.tradelog import close_trade
-    outcome = None
-    if thesis_validated:
-        outcome = {
-            "thesis_validated": thesis_validated,
-            "exit_driver": exit_driver or "discretionary",
-            "red_flags_materialized_json": json.dumps([]),
-            "exit_triggers_fired_json": json.dumps([]),
-            "macro_aligned": macro_aligned or "na",
-            "notes": notes,
-        }
-    conn = init_db()
-    try:
-        trade = close_trade(conn, trade_id, exit_price, reason, outcome=outcome)
-    finally:
-        conn.close()
-    if trade is None:
-        print(f"Trade #{trade_id} not found or already closed.")
-        return
-    pnl_sign = "+" if trade["pnl"] >= 0 else ""
-    print(f"Trade #{trade_id} closed: {pnl_sign}${trade['pnl']:.2f} ({pnl_sign}{trade['pnl_pct']*100:.1f}%)")
-    if outcome:
-        print(f"  Outcome recorded: thesis={thesis_validated}, driver={exit_driver}")
-
-
 def _cmd_log_list(limit):
     from swing_lab.db import init_db
     from swing_lab.tradelog import recent_trades
@@ -554,29 +514,6 @@ def main():
     log_p = sub.add_parser("log", help="Trade log operations")
     log_sub = log_p.add_subparsers(dest="log_command", required=True)
 
-    # log open
-    log_open_p = log_sub.add_parser("open", help="Open a new trade")
-    log_open_p.add_argument("symbol", help="Ticker symbol")
-    log_open_p.add_argument("shares", type=float, help="Number of shares")
-    log_open_p.add_argument("price", type=float, help="Entry price")
-    log_open_p.add_argument("--thesis", default="", help="Investment thesis")
-    log_open_p.add_argument("--scan-id", type=int, default=None, dest="scan_id")
-
-    # log close
-    log_close_p = log_sub.add_parser("close", help="Close a trade")
-    log_close_p.add_argument("trade_id", type=int)
-    log_close_p.add_argument("exit_price", type=float)
-    log_close_p.add_argument("--reason", default="")
-    log_close_p.add_argument("--thesis-validated", dest="thesis_validated",
-                             choices=["yes", "partial", "no", "unclear"], default=None)
-    log_close_p.add_argument("--exit-driver", dest="exit_driver",
-                             choices=["target_hit", "stop_loss", "thesis_broken", "macro_shift",
-                                      "sector_rotation", "time_stop", "discretionary"],
-                             default=None)
-    log_close_p.add_argument("--macro-aligned", dest="macro_aligned",
-                             choices=["yes", "no", "na"], default=None)
-    log_close_p.add_argument("--notes", dest="notes", default=None)
-
     # log list
     log_list_p = log_sub.add_parser("list", help="List recent trades")
     log_list_p.add_argument("--limit", type=int, default=20)
@@ -648,17 +585,7 @@ def main():
     elif args.command == "review":
         _cmd_review(args.strategy if hasattr(args, 'strategy') else None)
     elif args.command == "log":
-        if args.log_command == "open":
-            _cmd_log_open(args.symbol, args.shares, args.price, args.thesis, args.scan_id)
-        elif args.log_command == "close":
-            _cmd_log_close(
-                args.trade_id, args.exit_price, args.reason,
-                thesis_validated=args.thesis_validated,
-                exit_driver=args.exit_driver,
-                macro_aligned=args.macro_aligned,
-                notes=args.notes,
-            )
-        elif args.log_command == "list":
+        if args.log_command == "list":
             _cmd_log_list(args.limit)
     elif args.command == "postmortem":
         _cmd_postmortem(args.last, args.write_obsidian)

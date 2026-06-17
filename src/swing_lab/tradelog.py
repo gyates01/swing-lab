@@ -79,52 +79,6 @@ def recent_trades(conn: sqlite3.Connection, n: int = 20) -> list[dict]:
     return [dict(zip(col_names, row)) for row in rows]
 
 
-def edit_trade(conn: sqlite3.Connection, trade_id: int, **fields) -> dict | None:
-    """Update editable fields on a trade. Recomputes P&L if prices change. Return updated dict."""
-    editable = {"symbol", "shares", "entry_price", "exit_price", "thesis_text", "exit_reason"}
-    to_set = {k: v for k, v in fields.items() if k in editable and v is not None}
-    if not to_set:
-        return None
-
-    # Recompute P&L when prices are involved
-    if "entry_price" in to_set or "exit_price" in to_set or "shares" in to_set:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT shares, entry_price, exit_price FROM trades WHERE trade_id = ?",
-            (trade_id,),
-        )
-        row = cursor.fetchone()
-        if row:
-            shares = to_set.get("shares", row[0])
-            entry = to_set.get("entry_price", row[1])
-            exit_p = to_set.get("exit_price", row[2])
-            if entry is not None and exit_p is not None:
-                to_set["pnl"] = (exit_p - entry) * shares
-                to_set["pnl_pct"] = (exit_p - entry) / entry
-
-    # Column names are whitelisted above — safe to interpolate
-    set_clause = ", ".join(f"{k} = ?" for k in to_set)
-    values = list(to_set.values()) + [trade_id]
-    cursor = conn.cursor()
-    cursor.execute(f"UPDATE trades SET {set_clause} WHERE trade_id = ?", values)
-    conn.commit()
-
-    cursor.execute("SELECT * FROM trades WHERE trade_id = ?", (trade_id,))
-    updated = cursor.fetchone()
-    if updated is None:
-        return None
-    col_names = [desc[0] for desc in cursor.description]
-    return dict(zip(col_names, updated))
-
-
-def delete_trade(conn: sqlite3.Connection, trade_id: int) -> bool:
-    """Delete a trade by ID. Returns True if a row was deleted."""
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM trades WHERE trade_id = ?", (trade_id,))
-    conn.commit()
-    return cursor.rowcount > 0
-
-
 def open_trades(conn: sqlite3.Connection) -> list[dict]:
     """Return all currently open trades (exit_price IS NULL), newest first."""
     cursor = conn.cursor()

@@ -1,4 +1,6 @@
 """Build the pending order queue: opens from latest recs, closes from scan dropout."""
+import math
+
 from swing_lab import config
 from swing_lab.db import load_latest_recommendations, load_latest_scan_picks
 from swing_lab.execution import guardrails, orders
@@ -38,7 +40,9 @@ def generate_proposals(conn, quote_fn=get_quote) -> dict:
         if quote is None:
             warnings.append(f"{symbol}: no quote, skipped open")
             continue
-        shares = round(rec["sizing_pct"] * account["equity"] / quote, 6)
+        # Floor (not round) to 6 dp so notional can never exceed the sized target;
+        # rounding up by a fractional share would trip the per-position cap guardrail.
+        shares = math.floor(rec["sizing_pct"] * account["equity"] / quote * 1e6) / 1e6
         notional = shares * quote
         if notional < _MIN_NOTIONAL:
             warnings.append(f"{symbol}: below ${_MIN_NOTIONAL:.0f} minimum, skipped")

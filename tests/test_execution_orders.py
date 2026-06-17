@@ -71,3 +71,25 @@ def test_expire_stale_marks_old_pending_and_approved(db_conn):
     db_conn.commit()
     assert orders.expire_stale(db_conn) == 2
     assert {o["symbol"] for o in orders.list_orders(db_conn, status="expired")} == {"AAPL", "MSFT"}
+
+
+def test_expire_stale_uses_et_session_not_utc_day(db_conn):
+    """An after-hours proposal from the prior ET session expires even though it shares the
+    SAME UTC calendar date as the next session — the cutoff is the ET trading day, not UTC."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    from swing_lab.execution import orders
+    ET = ZoneInfo("America/New_York")
+    # 2026-06-16 20:37 ET (after Tue close) == 2026-06-17 00:37 UTC — prior session
+    db_conn.execute(
+        """INSERT INTO orders (created_at, mode, side, symbol, shares, est_notional, status)
+           VALUES ('2026-06-17T00:37:00+00:00', 'paper', 'buy', 'ALB', 1.0, 100.0, 'pending')""")
+    # 2026-06-17 09:35 ET (today's open) == 2026-06-17 13:35 UTC — current session
+    db_conn.execute(
+        """INSERT INTO orders (created_at, mode, side, symbol, shares, est_notional, status)
+           VALUES ('2026-06-17T13:35:00+00:00', 'paper', 'buy', 'TPR', 1.0, 100.0, 'pending')""")
+    db_conn.commit()
+    now = datetime(2026, 6, 17, 12, 0, tzinfo=ET)  # Wednesday midday ET
+    assert orders.expire_stale(db_conn, now_et=now) == 1
+    assert {o["symbol"] for o in orders.list_orders(db_conn, status="expired")} == {"ALB"}
+    assert {o["symbol"] for o in orders.list_orders(db_conn, status="pending")} == {"TPR"}

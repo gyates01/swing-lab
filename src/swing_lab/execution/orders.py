@@ -1,9 +1,12 @@
 """Queue CRUD over the `orders` table — the single source of truth."""
 import json
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 _SETTABLE = {"status", "decided_at", "filled_at", "fill_price",
              "trade_id", "notes", "guardrail_json"}
+
+_ET = ZoneInfo("America/New_York")
 
 
 def create_order(conn, proposal: dict, guardrail: list | None = None) -> int:
@@ -78,14 +81,20 @@ def todays_stats(conn) -> dict:
     return {"order_count": count, "notional": notional}
 
 
-def expire_stale(conn) -> int:
-    """Mark pending/approved orders created before today as expired. Return count."""
-    today_utc = datetime.now(timezone.utc).date().isoformat()
+def expire_stale(conn, now_et: datetime | None = None) -> int:
+    """Mark pending/approved orders from a prior ET trading day as expired. Return count.
+
+    Cutoff is midnight of the current ET day (not the UTC day) so an after-hours proposal
+    doesn't survive into the next session just because they share a UTC calendar date.
+    """
+    now = now_et if now_et is not None else datetime.now(_ET)
+    session_start_utc = now.replace(
+        hour=0, minute=0, second=0, microsecond=0).astimezone(timezone.utc).isoformat()
     cursor = conn.cursor()
     cursor.execute(
         """UPDATE orders SET status = 'expired'
-           WHERE status IN ('pending', 'approved') AND date(created_at) < ?""",
-        (today_utc,),
+           WHERE status IN ('pending', 'approved') AND datetime(created_at) < datetime(?)""",
+        (session_start_utc,),
     )
     conn.commit()
     return cursor.rowcount

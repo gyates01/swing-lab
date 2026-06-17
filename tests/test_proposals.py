@@ -49,6 +49,20 @@ def test_generates_buy_from_rec(db_conn):
     assert orders.list_orders(db_conn, status="pending")[0]["symbol"] == "AAPL"
 
 
+def test_full_size_open_not_flagged_by_rounding(db_conn):
+    """sizing_pct == MAX_POSITION_PCT must not trip 'exceeds max' via share rounding."""
+    import json
+    from swing_lab import config
+    from swing_lab.execution.proposals import generate_proposals
+    sid = _seed_scan(db_conn, ["XYZ"])
+    _seed_recs(db_conn, sid, [(1, "XYZ", config.MAX_POSITION_PCT)])  # exactly at the cap
+    result = generate_proposals(db_conn, quote_fn=lambda s: 166.11)  # doesn't divide evenly
+    o = result["created"][0]
+    cap = config.MAX_POSITION_PCT * config.PAPER_STARTING_CASH
+    assert o["est_notional"] <= cap + 1e-6
+    assert "position exceeds max position size" not in json.loads(o["guardrail_json"])
+
+
 def test_skips_held_symbol(db_conn):
     from swing_lab.tradelog import open_trade
     from swing_lab.execution.proposals import generate_proposals

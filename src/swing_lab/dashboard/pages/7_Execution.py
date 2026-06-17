@@ -1,5 +1,4 @@
 """Page 7 — Paper Execution: review/approve/reject/execute the order queue."""
-import json
 from datetime import datetime, timezone
 
 import streamlit as st
@@ -7,9 +6,12 @@ import streamlit as st
 from swing_lab.dashboard import sidebar_chat
 from swing_lab.dashboard.theme import inject, render_topbar
 from swing_lab.db import init_db
-from swing_lab.execution import orders
+from swing_lab.execution import guardrails, orders
 from swing_lab.execution.executor import execute_approved
-from swing_lab.execution.paper_account import paper_account_state
+from swing_lab.execution.paper_account import (
+    account_state_for_guardrails,
+    paper_account_state,
+)
 from swing_lab.execution.proposals import generate_proposals
 
 st.set_page_config(page_title="Execution — Swing Lab", layout="wide")
@@ -37,8 +39,11 @@ st.subheader("Pending queue")
 pending = orders.list_orders(conn, status="pending")
 if not pending:
     st.caption("No pending orders. Click 'Generate proposals' to build the queue.")
+# Re-evaluate guardrails against *current* state; flags stored at create-time can be
+# stale (e.g. an after-hours proposal still tagged "outside regular trading hours").
+guard_state = account_state_for_guardrails(conn) if pending else None
 for o in pending:
-    flags = json.loads(o["guardrail_json"])
+    flags = guardrails.check(o, guard_state)
     c1, c2, c3, c4 = st.columns([3, 2, 2, 2])
     c1.write(f"**{o['side'].upper()} {o['symbol']}** — {o['shares']:.4f} sh "
              f"(~${o['est_notional']:.2f}) · {o['reason']}")

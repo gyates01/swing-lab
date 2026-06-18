@@ -152,7 +152,8 @@ def init_db() -> sqlite3.Connection:
             decided_at    TEXT,
             filled_at     TEXT,
             fill_price    REAL,
-            notes         TEXT
+            notes         TEXT,
+            entry_high    REAL
         );
     """)
     # Safe migrations for existing DBs
@@ -172,6 +173,7 @@ def init_db() -> sqlite3.Connection:
         "ALTER TABLE trades ADD COLUMN source TEXT",
         "ALTER TABLE trades ADD COLUMN mode TEXT DEFAULT 'live'",
         "ALTER TABLE trades ADD COLUMN fees REAL",
+        "ALTER TABLE orders ADD COLUMN entry_high REAL",
     ]:
         try:
             conn.execute(migration)

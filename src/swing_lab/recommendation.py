@@ -4,7 +4,10 @@ import os
 import time
 import anthropic
 import pandas as pd
-from swing_lab.config import DATA_DIR, MAX_POSITION_PCT, MODEL, RECOMMEND_TOP_N, RECOMMEND_RED_FLAG_MAX, get_api_key
+from swing_lab.config import (
+    DATA_DIR, MAX_POSITION_PCT, MODEL, RECOMMEND_TOP_N,
+    RECOMMEND_RED_FLAG_MAX, RECOMMEND_SECOND_PICK_MIN_SCORE, get_api_key,
+)
 from swing_lab.technicals import get_price_levels, format_levels_for_prompt
 
 _DIAG_FILE = DATA_DIR / ".cache_ids.json"
@@ -93,47 +96,39 @@ def compute_sizing(gate_sizing: float, n: int) -> float:
     return min(MAX_POSITION_PCT, gate_sizing / n)
 
 
-def compose_runner_up(review_row) -> dict:
-    """Build runner-up rec dict from stored review data — no API call."""
-    flags = []
-    try:
-        flags = json.loads(review_row.get("red_flags_json") or "[]")
-    except Exception:
-        pass
-
-    summary = review_row.get("claude_summary") or ""
-    if len(summary) > 350:
-        truncated = summary[:350].rsplit(".", 1)
-        summary = (truncated[0] + ".") if len(truncated) > 1 else summary[:350]
-
-    # Red flags are already the opposite-side conditions; reuse as exit triggers
-    exit_triggers = [f"Watch if: {f}" for f in flags[:3]] if flags else []
-
-    return {
-        "rationale": summary,
-        "risks": flags[:3],
-        "exit_triggers": exit_triggers,
-        "entry_zone": "",
-        "entry_low":   None,
-        "entry_high":  None,
-        "support":     None,
-        "stop_price":  None,
-        "target":      None,
-        "is_synthesized": False,
-        "cache_hit": None,
-    }
+def n_picks_to_synthesize(
+    candidates: pd.DataFrame,
+    *,
+    second_min_score: float = RECOMMEND_SECOND_PICK_MIN_SCORE,
+    cap: int = RECOMMEND_TOP_N,
+) -> int:
+    """How many picks to fully synthesize: 1 by default, 2 only if the #2
+    candidate independently clears `second_min_score`. Never below 1 (unless
+    there are no candidates) and never above `cap`."""
+    n = len(candidates)
+    if n == 0:
+        return 0
+    count = 1
+    if n >= 2 and float(candidates.iloc[1].get("blended_score") or 0) >= second_min_score:
+        count = 2
+    return min(count, cap)
 
 
 def _fetch_current_price(symbol: str) -> tuple[float | None, str]:
     """Return (price, session) where session is 'after-hours', 'pre-market', or '' (regular/close)."""
     try:
         import yfinance as yf
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timezone
 
-        now_utc = datetime.now(timezone.utc)
-        # DST approximation: UTC-4 Mar–Nov (EDT), UTC-5 otherwise (EST)
-        et_offset = -4 if 3 <= now_utc.month <= 11 else -5
-        mins = (now_utc.hour + et_offset) % 24 * 60 + now_utc.minute
+        try:
+            from zoneinfo import ZoneInfo
+            now_et = datetime.now(ZoneInfo("America/New_York"))
+        except Exception:
+            # Fallback approximation if tz database is unavailable
+            now_utc = datetime.now(timezone.utc)
+            et_offset = -4 if 3 <= now_utc.month <= 11 else -5
+            now_et = now_utc.replace(hour=(now_utc.hour + et_offset) % 24)
+        mins = now_et.hour * 60 + now_et.minute
 
         if 16 * 60 <= mins < 20 * 60:
             session = "after-hours"
@@ -164,25 +159,25 @@ def _fetch_current_price(symbol: str) -> tuple[float | None, str]:
     return None, ""
 
 
-def synthesize_top_pick(
-    top_pick_row,
-    runner_ups_df: pd.DataFrame,
+def synthesize_pick(
+    pick_row,
+    others_df: pd.DataFrame,
     gate_dict: dict,
     open_symbols: list,
 ) -> dict:
-    """Single Anthropic call to synthesize rationale + risks for the #1 pick."""
+    """Single Anthropic call to synthesize rationale + risks + price levels for one pick."""
     client = anthropic.Anthropic(api_key=get_api_key())
 
-    symbol = top_pick_row["symbol"]
+    symbol = pick_row["symbol"]
     current_price, price_session = _fetch_current_price(symbol)
     price_str = f"${current_price:.2f}" if current_price else "unknown"
 
     levels = get_price_levels(symbol)
     levels_block = format_levels_for_prompt(levels, current_price)
 
-    runner_lines = []
-    for _, row in runner_ups_df.iterrows():
-        runner_lines.append(
+    other_lines = []
+    for _, row in others_df.iterrows():
+        other_lines.append(
             f"- {row['symbol']}: blended {row.get('blended_score', 0):.1f}/100, "
             f"quant {row.get('quant_score', 0):.1f}/100, "
             f"Claude {row.get('claude_score', 0):.1f}/10"
@@ -190,26 +185,26 @@ def synthesize_top_pick(
 
     flags = []
     try:
-        flags = json.loads(top_pick_row.get("red_flags_json") or "[]")
+        flags = json.loads(pick_row.get("red_flags_json") or "[]")
     except Exception:
         pass
 
     levels_section = f"\n{levels_block}\n" if levels_block else ""
-    user_msg = f"""Top pick: {symbol}
+    user_msg = f"""Candidate: {symbol}
 Current price: {price_str}
-Blended score: {top_pick_row.get("blended_score", 0):.2f}/100
-Quant score: {top_pick_row.get("quant_score", 0):.1f}/100
-Claude score: {top_pick_row.get("claude_score", 0):.1f}/10
+Blended score: {pick_row.get("blended_score", 0):.2f}/100
+Quant score: {pick_row.get("quant_score", 0):.1f}/100
+Claude score: {pick_row.get("claude_score", 0):.1f}/10
 Red flags: {flags or "none"}
 
 Macro gate: {gate_dict.get("label", "")} (score {gate_dict.get("score", 0):.1f}, sizing {gate_dict.get("sizing", 0)*100:.0f}%)
 Currently held: {", ".join(open_symbols) if open_symbols else "none"}
 
-Runner-ups (ranked #2 and #3):
-{chr(10).join(runner_lines) if runner_lines else "none"}
+Other candidates this cycle:
+{chr(10).join(other_lines) if other_lines else "none"}
 {levels_section}
 Claude's prior analysis of {symbol}:
-{top_pick_row.get("claude_summary", "")}
+{pick_row.get("claude_summary", "")}
 
 Call submit_recommendation with your synthesized analysis. Price levels must be consistent: stop < support < entry_low ≤ entry_high < target. All levels must be anchored to the technical chart levels above — do not invent arbitrary numbers.
 """
@@ -304,24 +299,22 @@ def generate_recommendations(
         )
 
     candidates = select_candidates(reviews_df, open_symbols)
-    top_n = candidates.head(RECOMMEND_TOP_N)
-    n = len(top_n)
+    n = n_picks_to_synthesize(candidates)
 
     if n == 0:
         return []
 
+    top_n = candidates.head(n)
     sizing_pct = compute_sizing(gate["sizing"], n)
     recs = []
 
     for rank_idx in range(1, n + 1):
         row = top_n.iloc[rank_idx - 1]
-        if rank_idx == 1:
-            synthesis = synthesize_top_pick(row, top_n.iloc[1:], gate, list(open_symbols))
-            price = synthesis.pop("price_at_scan", None)
-            price_session = synthesis.pop("price_session", "")
-        else:
-            synthesis = compose_runner_up(row)
-            price, price_session = _fetch_current_price(row["symbol"])
+        # Every recommended pick gets a full synthesis with real price levels —
+        # if a name can't clear the bar for that, it isn't recommended at all.
+        synthesis = synthesize_pick(row, top_n.iloc[rank_idx:], gate, list(open_symbols))
+        price = synthesis.pop("price_at_scan", None)
+        price_session = synthesis.pop("price_session", "")
 
         flags = []
         try:

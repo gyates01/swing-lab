@@ -31,8 +31,9 @@ TOP_N_PICKS = 20          # scanner output size
 REVIEW_TOP_N = 6          # candidates sent to Claude review
 
 # Recommendation engine
-RECOMMEND_TOP_N = 3          # number of ranked recommendations to output
-RECOMMEND_RED_FLAG_MAX = 2   # skip candidates with more than this many red flags
+RECOMMEND_TOP_N = 2              # max recommendations to output (always #1; #2 only if it clears the bar)
+RECOMMEND_RED_FLAG_MAX = 2       # skip candidates with more than this many red flags
+RECOMMEND_SECOND_PICK_MIN_SCORE = 70.0  # only synthesize a 2nd pick if its blended_score clears this
 
 # Rebalance: bi-weekly (every other Sunday)
 REBALANCE_DAY_OF_WEEK = 6  # Sunday
@@ -53,6 +54,7 @@ CASH_RESERVE_PCT = 0.10             # Min cash kept as fraction of equity (deplo
 MAX_OPEN_POSITIONS = 8              # Cap on concurrent open paper positions
 MAX_ORDERS_PER_DAY = 12            # Daily order-count cap (above MAX_OPEN_POSITIONS for rebalance headroom)
 MAX_NOTIONAL_PER_DAY_PCT = 0.30    # Daily cumulative notional cap, as fraction of equity
+ENTRY_ZONE_TOLERANCE_PCT = 0.02    # Buy blocked if price > entry_high * (1 + this) — no chasing past the zone
 EXECUTION_KILL_SWITCH = False      # Hard stop — blocks all orders when True
 EXECUTION_MODE = "paper"           # Active fill backend selector
 

@@ -10,6 +10,7 @@ from swing_lab.dashboard.theme import (
     ACCENT, GREEN, RED, AMBER, BLUE,
 )
 from swing_lab.dashboard.lib import load_latest_recommendations
+from swing_lab.technicals import get_price_levels, format_levels_for_prompt
 from swing_lab.dashboard.charts import (
     candle_chart as _candle_chart,
     parse_entry_zone as _parse_entry_zone,
@@ -27,6 +28,11 @@ def _company_name(symbol: str) -> str:
         return ""
 
 
+@st.cache_data(ttl=3600)
+def _price_levels(symbol: str) -> dict:
+    return get_price_levels(symbol)
+
+
 st.set_page_config(
     page_title="Recommendation — Swing Lab",
     layout="wide",
@@ -38,8 +44,9 @@ render_topbar()
 
 st.title("Trade Recommendation Engine")
 st.markdown(
-    "Top 3 momentum picks synthesized from the macro gate, scanner, and Claude reviews. "
-    "The #1 pick gets a live Claude synthesis; #2/#3 are composed from stored review data."
+    "Up to two momentum picks synthesized from the macro gate, scanner, and Claude reviews. "
+    "The #1 pick always gets a live Claude synthesis with full entry/stop/target levels; "
+    "a #2 is added only when it independently clears the conviction bar — otherwise you get one pick."
 )
 
 # ── Helpers for #1 pick display ───────────────────────────────────────────────
@@ -286,6 +293,7 @@ else:
             )
 
         # ── Candlestick chart ──────────────────────────────────────────────
+        _levels = _price_levels(symbol)
         hero_chart = _candle_chart(
             symbol,
             entry_zone_str=top.get("entry_zone", ""),
@@ -299,9 +307,26 @@ else:
             support=top.get("support"),
             stop=top.get("stop_price"),
             target=top.get("target"),
+            swing_lows=_levels.get("swing_lows"),
+            swing_highs=_levels.get("swing_highs"),
         )
         if hero_chart:
             st.plotly_chart(hero_chart, use_container_width=True)
+
+        # ── Technical anchors expander ─────────────────────────────────────
+        if _levels:
+            _anchor_text = format_levels_for_prompt(_levels, price)
+            with st.expander("Technical anchors fed to Claude", expanded=False):
+                st.markdown(
+                    f'<pre style="color:{TEXT_MUTED};font-size:0.78rem;'
+                    f'line-height:1.7;white-space:pre-wrap;margin:0;">'
+                    f'{_anchor_text}</pre>',
+                    unsafe_allow_html=True,
+                )
+                st.caption(
+                    "Orange triangles on the chart mark these same swing pivots. "
+                    "Claude was instructed to anchor all price levels to this data."
+                )
 
         # ── Key risks (severity-dot rows) ──────────────────────────────────
         risks = []

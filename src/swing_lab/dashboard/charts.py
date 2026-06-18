@@ -127,7 +127,9 @@ def candle_chart(symbol: str, entry_zone_str: str = "", price: float | None = No
                  *,
                  entry_low: float | None = None, entry_high: float | None = None,
                  support: float | None = None, stop: float | None = None,
-                 target: float | None = None):
+                 target: float | None = None,
+                 swing_lows: list | None = None,
+                 swing_highs: list | None = None):
     """Themed Plotly candlestick with entry/support/stop/target overlays. Returns None on failure.
 
     Explicit keyword args (entry_low/entry_high/support/stop/target) take priority over
@@ -139,17 +141,19 @@ def candle_chart(symbol: str, entry_zone_str: str = "", price: float | None = No
     import plotly.graph_objects as go
     _DISPLAY_DAYS = {"1mo": 21, "2mo": 42, "3mo": 63, "6mo": 126}
     try:
-        hist_full = fetch_history(symbol, "6mo")
+        hist_full = fetch_history(symbol, "1y")
         if hist_full is None or hist_full.empty:
             return None
 
-        sma20 = hist_full["Close"].rolling(20).mean()
-        sma50 = hist_full["Close"].rolling(50).mean()
+        sma20  = hist_full["Close"].rolling(20).mean()
+        sma50  = hist_full["Close"].rolling(50).mean()
+        sma200 = hist_full["Close"].rolling(200).mean()
 
         n = _DISPLAY_DAYS.get(period, 63)
-        hist = hist_full.iloc[-n:]
-        sma20 = sma20.iloc[-n:]
-        sma50 = sma50.iloc[-n:]
+        hist   = hist_full.iloc[-n:]
+        sma20  = sma20.iloc[-n:]
+        sma50  = sma50.iloc[-n:]
+        sma200 = sma200.iloc[-n:]
 
         fig = make_fig(
             height=height,
@@ -159,6 +163,16 @@ def candle_chart(symbol: str, entry_zone_str: str = "", price: float | None = No
             yaxis=dict(tickprefix="$"),
             showlegend=False,
         )
+
+        _sma200_clean = sma200.dropna()
+        if len(_sma200_clean) > 0:
+            fig.add_trace(go.Scatter(
+                x=sma200.index, y=sma200,
+                mode="lines",
+                line=dict(color=_PURPLE, width=1, dash="dot"),
+                name="SMA200", showlegend=False,
+                hovertemplate="SMA200: $%{y:,.2f}<extra></extra>",
+            ))
 
         fig.add_trace(go.Scatter(
             x=hist.index, y=sma50,
@@ -196,6 +210,39 @@ def candle_chart(symbol: str, entry_zone_str: str = "", price: float | None = No
                 xanchor="left", yanchor="middle",
                 bgcolor=CARD, borderpad=1,
             )
+        if len(_sma200_clean) > 0:
+            fig.add_annotation(
+                x=last_x, y=_sma200_clean.iloc[-1],
+                xref="x", yref="y",
+                text="200d", showarrow=False,
+                font=dict(color=_PURPLE, size=8),
+                xanchor="left", yanchor="middle",
+                bgcolor=CARD, borderpad=1,
+            )
+
+        # Swing pivot markers — orange triangles showing what was fed to Claude
+        _PIVOT_COLOR = "rgba(251,146,60,0.85)"
+        _now = pd.Timestamp.now(tz=hist.index.tz)
+        if swing_lows:
+            fig.add_trace(go.Scatter(
+                x=[_now - pd.Timedelta(days=d) for _, d in swing_lows],
+                y=[p for p, _ in swing_lows],
+                mode="markers",
+                marker=dict(symbol="triangle-up", color=_PIVOT_COLOR, size=9,
+                            line=dict(color="rgba(0,0,0,0.3)", width=1)),
+                name="Swing Low", showlegend=False,
+                hovertemplate="Swing Low (fed to Claude): $%{y:,.2f}<extra></extra>",
+            ))
+        if swing_highs:
+            fig.add_trace(go.Scatter(
+                x=[_now - pd.Timedelta(days=d) for _, d in swing_highs],
+                y=[p for p, _ in swing_highs],
+                mode="markers",
+                marker=dict(symbol="triangle-down", color=_PIVOT_COLOR, size=9,
+                            line=dict(color="rgba(0,0,0,0.3)", width=1)),
+                name="Swing High", showlegend=False,
+                hovertemplate="Swing High (fed to Claude): $%{y:,.2f}<extra></extra>",
+            ))
 
         fig.add_trace(go.Candlestick(
             x=hist.index,

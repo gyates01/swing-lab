@@ -16,12 +16,12 @@ def create_order(conn, proposal: dict, guardrail: list | None = None) -> int:
     cursor.execute(
         """INSERT INTO orders
            (created_at, mode, side, symbol, shares, est_price, est_notional,
-            reason, rec_id, trade_id, status, guardrail_json)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)""",
+            reason, rec_id, trade_id, status, guardrail_json, entry_high)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)""",
         (created_at, proposal["mode"], proposal["side"], proposal["symbol"],
          proposal["shares"], proposal.get("est_price"), proposal.get("est_notional"),
          proposal.get("reason"), proposal.get("rec_id"), proposal.get("trade_id"),
-         json.dumps(guardrail or [])),
+         json.dumps(guardrail or []), proposal.get("entry_high")),
     )
     conn.commit()
     return cursor.lastrowid

@@ -52,4 +52,15 @@ def check(proposal: dict, account_state: dict, now_et: datetime | None = None) -
         if is_new and len(account_state["open_symbols"]) >= config.MAX_OPEN_POSITIONS:
             violations.append("max open positions reached")
 
+        # No chasing: block buys whose price has run past the entry zone.
+        entry_high = proposal.get("entry_high")
+        price = proposal.get("est_price")
+        if entry_high is not None and price is not None:
+            entry_high = float(entry_high)
+            ceiling = entry_high * (1 + config.ENTRY_ZONE_TOLERANCE_PCT)
+            if price > ceiling:
+                over_pct = (price / entry_high - 1) * 100
+                violations.append(
+                    f"price ${price:.2f} is {over_pct:.1f}% above entry zone (top ${entry_high:.2f})")
+
     return violations

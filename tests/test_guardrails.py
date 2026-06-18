@@ -81,3 +81,38 @@ def test_sells_exempt_from_buy_only_checks():
     v = guardrails.check(_prop(side="sell", symbol="ZZZZ", est_notional=500.0),
                          state, now_et=_RTH)
     assert v == []  # no cash-reserve / max-positions / per-position for sells
+
+
+def test_price_above_entry_zone_blocks():
+    from swing_lab.execution import guardrails
+    # entry_high=100, 2% tolerance -> ceiling 102; price 105 is above -> flag
+    v = guardrails.check(_prop(est_price=105.0, entry_high=100.0), _state(), now_et=_RTH)
+    assert any("entry zone" in x for x in v)
+
+
+def test_price_within_tolerance_passes():
+    from swing_lab.execution import guardrails
+    # price 101 <= 102 ceiling -> no flag (a little chasing is allowed)
+    v = guardrails.check(_prop(est_price=101.0, entry_high=100.0), _state(), now_et=_RTH)
+    assert not any("entry zone" in x for x in v)
+
+
+def test_price_below_entry_zone_passes():
+    from swing_lab.execution import guardrails
+    # buying cheaper than the zone is never a problem
+    v = guardrails.check(_prop(est_price=80.0, entry_high=100.0), _state(), now_et=_RTH)
+    assert not any("entry zone" in x for x in v)
+
+
+def test_no_entry_high_skips_zone_check():
+    from swing_lab.execution import guardrails
+    # recs without levels carry no entry_high -> zone check is a no-op
+    v = guardrails.check(_prop(est_price=9999.0), _state(), now_et=_RTH)
+    assert not any("entry zone" in x for x in v)
+
+
+def test_sell_exempt_from_entry_zone():
+    from swing_lab.execution import guardrails
+    v = guardrails.check(_prop(side="sell", est_price=105.0, entry_high=100.0),
+                         _state(), now_et=_RTH)
+    assert not any("entry zone" in x for x in v)

@@ -51,6 +51,7 @@ def generate_proposals(conn, quote_fn=get_quote) -> dict:
             "mode": config.EXECUTION_MODE, "side": "buy", "symbol": symbol,
             "shares": shares, "est_price": quote, "est_notional": notional,
             "reason": "open_rec", "rec_id": rec["rec_id"], "trade_id": None,
+            "entry_high": rec.get("entry_high"),
         }
         oid = orders.create_order(conn, proposal,
                                   guardrail=guardrails.check(proposal, guard_state))

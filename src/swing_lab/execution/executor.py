@@ -16,6 +16,7 @@ def _proposal_from_order(o: dict) -> dict:
         "shares": o["shares"], "est_price": o["est_price"],
         "est_notional": o["est_notional"], "reason": o["reason"],
         "rec_id": o["rec_id"], "trade_id": o["trade_id"],
+        "entry_high": o.get("entry_high"),
     }
 
 

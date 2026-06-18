@@ -4,8 +4,9 @@ from datetime import datetime, timezone
 import streamlit as st
 
 from swing_lab.dashboard import sidebar_chat
-from swing_lab.dashboard.theme import inject, render_topbar
-from swing_lab.db import init_db
+from swing_lab.dashboard.charts import candle_chart
+from swing_lab.dashboard.theme import inject, render_topbar, zone_kpi_grid_html
+from swing_lab.db import init_db, load_recommendation
 from swing_lab.execution import guardrails, orders
 from swing_lab.execution.executor import execute_approved
 from swing_lab.execution.paper_account import (
@@ -59,6 +60,30 @@ for o in pending:
         orders.set_status(conn, o["order_id"], "rejected",
                           decided_at=datetime.now(timezone.utc).isoformat())
         st.rerun()
+    if o["side"] == "buy":
+        rec = load_recommendation(conn, o["rec_id"]) if o["rec_id"] is not None else None
+        has_levels = bool(rec and rec.get("entry_low") is not None
+                          and rec.get("stop_price") is not None)
+        if has_levels:
+            entry_mid = (rec["entry_low"] + rec["entry_high"]) / 2
+            st.markdown(
+                zone_kpi_grid_html(rec["stop_price"], rec["support"], entry_mid,
+                                   rec["target"], o["est_price"],
+                                   entry_range=(rec["entry_low"], rec["entry_high"])),
+                unsafe_allow_html=True,
+            )
+        with st.expander(f"{o['symbol']} chart"):
+            chart = candle_chart(
+                o["symbol"], price=o["est_price"], period="3mo", height=320,
+                trade_entry_price=o["est_price"],
+                entry_low=rec["entry_low"] if has_levels else None,
+                entry_high=rec["entry_high"] if has_levels else None,
+                support=rec["support"] if has_levels else None,
+                stop=rec["stop_price"] if has_levels else None,
+                target=rec["target"] if has_levels else None,
+            )
+            if chart:
+                st.plotly_chart(chart, use_container_width=True)
 
 # --- Approved (awaiting execution) ---
 approved = orders.list_orders(conn, status="approved")

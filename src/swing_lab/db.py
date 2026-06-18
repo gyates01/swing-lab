@@ -342,6 +342,28 @@ def load_latest_recommendations(conn) -> list[dict]:
     return [dict(zip(cols, row)) for row in cursor.fetchall()]
 
 
+def load_recommendation(conn, rec_id: int) -> dict | None:
+    """Return one recommendation row (with price levels + claude_summary) by id, or None."""
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT r.rec_id, r.batch_id, r.created_at, r.scan_id, r.review_id, r.rank, r.symbol,
+                  r.blended_score, r.sizing_pct, r.gate_sizing, r.rationale, r.risks_json,
+                  r.exit_triggers_json, r.entry_zone, r.is_synthesized, r.cache_hit,
+                  r.price_at_scan, r.price_session,
+                  r.entry_low, r.entry_high, r.support, r.stop_price, r.target,
+                  rv.claude_summary
+           FROM recommendations r
+           LEFT JOIN reviews rv ON r.review_id = rv.review_id
+           WHERE r.rec_id = ?""",
+        (rec_id,),
+    )
+    row = cursor.fetchone()
+    if row is None:
+        return None
+    cols = [d[0] for d in cursor.description]
+    return dict(zip(cols, row))
+
+
 def save_trade_outcome(conn, trade_id: int, outcome: dict) -> int:
     """Upsert a trade outcome row. Returns outcome_id."""
     created_at = datetime.now(timezone.utc).isoformat()

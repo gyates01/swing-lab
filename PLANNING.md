@@ -15,6 +15,9 @@ of any kind.**
 | Robinhood Broker Foundation (read-only sync) | ✅ Complete | 2026-06-15 |
 | Paper Execution Core (propose → approve → execute) | ✅ Complete | 2026-06-16 |
 | Sync-Only Trade Log (manual entry removed, postmortem scoped) | ✅ Complete | 2026-06-16 |
+| Execution Price Levels & Charts (display entry/stop/target + lazy chart) | ✅ Complete | 2026-06-17 |
+
+> Plan: `docs/superpowers/plans/2026-06-17-execution-price-levels.md`
 
 ### Task breakdown (all complete 2026-06-15)
 

@@ -1,27 +1,27 @@
 ﻿Fetching macro gate...
-MACRO GATE ù PARTIAL | score=63.0 | sizing=60%
+MACRO GATE ù PARTIAL | score=57.3 | sizing=60%
 Scoring S&P 500 universe (batched download ù under a minute)...
     symbol    sector                    momentum    score    gate_sizing
 --  --------  ----------------------  ----------  -------  -------------
- 0  ALB       Materials                     1.80   100.00           0.60
- 1  IVZ       Financials                    0.91   100.00           0.60
- 2  APA       Energy                        1.17   100.00           0.60
- 3  HST       Real Estate                   0.48   100.00           0.60
- 4  TPR       Consumer Discretionary        0.76   100.00           0.60
- 5  VTRS      Health Care                   0.96   100.00           0.60
- 6  SNDK      Information Technology       34.36   100.00           0.60
- 7  FIX       Industrials                   2.65   100.00           0.60
- 8  EIX       Utilities                     0.53   100.00           0.60
- 9  SATS      Communication Services        6.77   100.00           0.60
-10  CASY      Consumer Staples              0.89   100.00           0.60
-11  VRT       Industrials                   1.93    98.73           0.60
+ 0  APA       Energy                        1.10   100.00           0.60
+ 1  HST       Real Estate                   0.47   100.00           0.60
+ 2  IVZ       Financials                    0.89   100.00           0.60
+ 3  SNDK      Information Technology       34.55   100.00           0.60
+ 4  FIX       Industrials                   2.76   100.00           0.60
+ 5  VTRS      Health Care                   0.91   100.00           0.60
+ 6  ALB       Materials                     1.72   100.00           0.60
+ 7  EIX       Utilities                     0.50   100.00           0.60
+ 8  SATS      Communication Services        6.42   100.00           0.60
+ 9  CASY      Consumer Staples              0.69   100.00           0.60
+10  TPR       Consumer Discretionary        0.75   100.00           0.60
+11  VRT       Industrials                   2.02    98.73           0.60
 12  GS        Financials                    0.65    98.68           0.60
-13  LITE      Information Technology       10.53    98.63           0.60
-14  MRNA      Health Care                   0.67    98.31           0.60
-15  ROST      Consumer Discretionary        0.67    97.87           0.60
+13  LITE      Information Technology       10.55    98.63           0.60
+14  MRNA      Health Care                   0.69    98.31           0.60
+15  ROST      Consumer Discretionary        0.69    97.87           0.60
 16  CAT       Industrials                   1.48    97.47           0.60
 17  C         Financials                    0.64    97.37           0.60
-18  WDC       Information Technology        7.51    97.26           0.60
-19  ADM       Consumer Staples              0.67    97.14           0.60
+18  WDC       Information Technology        7.68    97.26           0.60
+19  ADM       Consumer Staples              0.64    97.14           0.60
 
-Scan #93 saved to swing.db
+Scan #96 saved to swing.db

@@ -481,6 +481,12 @@ def _cmd_backtest(start: str, end: str, with_gate: bool = False,
 
 
 def main():
+    # Windows consoles default to cp1252, which can't encode the unicode
+    # glyphs (★ — • →) used throughout the CLI output and crashes on print.
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+
     parser = argparse.ArgumentParser(prog="swing-lab", description="Swing trading research tool")
     sub = parser.add_subparsers(dest="command", required=True)
 

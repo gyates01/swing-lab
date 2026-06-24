@@ -16,6 +16,7 @@ of any kind.**
 | Paper Execution Core (propose → approve → execute) | ✅ Complete | 2026-06-16 |
 | Sync-Only Trade Log (manual entry removed, postmortem scoped) | ✅ Complete | 2026-06-16 |
 | Execution Price Levels & Charts (display entry/stop/target + lazy chart) | ✅ Complete | 2026-06-17 |
+| Forward-Projected Exit Targets (ATR projection + 2:1 reward:risk gate) | ⏳ Pending | — |
 
 > Plan: `docs/superpowers/plans/2026-06-17-execution-price-levels.md`
 
@@ -141,3 +142,24 @@ cleaned up. `open_trade`/`close_trade` plumbing retained for sync + paper engine
 - ✅ Full suite green (Task 1 & 2 added postmortem-scope + CLI-removal tests).
 - ⏳ Dashboard browser smoke (user action): Trade Log page renders read-only
   (no Open/Close/Edit/Delete); Recommendation page has no "Open trade" button.
+
+---
+
+# Sub-project #6 — Forward-Projected Exit Targets
+
+The recommendation engine's exit target no longer anchors to the nearest swing
+high / 52-week high (which collapses onto the entry for momentum leaders already
+at new highs). A new pure `validate_target()` owns the final number: it
+recomputes degenerate targets (≤ 5% above entry) to a forward `entry_high +
+3.5×ATR` projection and flags sub-2:1 reward:risk (surfaced in `key_risks`, not
+filtered). The analyst prompt + tool schema are updated to project targets
+forward and explicitly not cap breakouts at the prior high.
+
+- Spec: `docs/superpowers/specs/2026-06-24-exit-target-redesign-design.md`
+- Plan: `docs/superpowers/plans/2026-06-24-forward-projected-exit-targets.md`
+
+## Milestone Status
+
+| Milestone | Status | Date |
+|---|---|---|
+| Forward-Projected Exit Targets | ⏳ Pending | — |

@@ -64,7 +64,9 @@ _RECOMMENDATION_TOOL = {
             "stop":         {"type": "number",
                              "description": "Hard stop-loss price in dollars. Must be below support."},
             "target":       {"type": "number",
-                             "description": "Realistic profit target price in dollars (10–25% upside from entry)."},
+                             "description": "Forward-projected profit target in dollars (~ATR-based), clearly "
+                                            "above the entry zone and ideally clearing 2:1 reward vs. the stop. "
+                                            "Do NOT set this at the prior 52-week high for breakout names."},
         },
     },
 }

@@ -1,6 +1,7 @@
 """Technical price level analysis from OHLC history."""
 import pandas as pd
 import yfinance as yf
+from swing_lab.config import TARGET_ATR_MULTIPLE
 
 
 def get_price_levels(symbol: str, pivot_window: int = 5) -> dict:
@@ -128,6 +129,13 @@ def format_levels_for_prompt(levels: dict, current_price: float | None) -> str:
         atr_pct = f" ({atr / current_price * 100:.1f}% of price)" if current_price else ""
         lines.append(f"ATR(14): ${atr:.2f}{atr_pct}")
 
+    if atr is not None and current_price:
+        proj = current_price + TARGET_ATR_MULTIPLE * atr
+        proj_pct = (proj / current_price - 1) * 100
+        lines.append(
+            f"Projected swing target (entry + {TARGET_ATR_MULTIPLE}×ATR ≈ +{proj_pct:.0f}%): ${proj:.2f}"
+        )
+
     lows = levels.get("swing_lows") or []
     if lows:
         parts = [f"${p:.2f} ({d}d ago)" for p, d in lows]
@@ -141,7 +149,10 @@ def format_levels_for_prompt(levels: dict, current_price: float | None) -> str:
     lines.append(
         "Guidance: entry zone should bracket a nearby MA or the most recent swing low; "
         "support = next swing low below entry; stop = support minus 0.5–1× ATR; "
-        "target = nearest swing high or 52w high."
+        "target = project forward from entry using the ATR-based swing target above. "
+        "For names at or near the 52-week high, do NOT cap the target at the prior high — "
+        "momentum breakouts run through it. Only use a swing high as the target if it sits "
+        "clearly above the entry zone, and target should clear ~2:1 reward vs. the stop."
     )
 
     return "\n".join(lines)

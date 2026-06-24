@@ -1,5 +1,56 @@
 # Swing Lab — Active Tasks
 
+## Forward-Projected Exit Targets (COMPLETE ✅ 2026-06-24)
+
+Replace backward-looking 52w-high/swing-high target anchoring with a forward-projected ATR-based target gated on 2:1 reward:risk. Pushed to origin/main.
+
+- [x] Task 1: config constants (`TARGET_ATR_MULTIPLE=3.5`, `TARGET_MIN_REWARD_RISK=2.0`, `TARGET_MIN_UPSIDE_PCT=0.05`) + pure `reward_risk`/`validate_target`/`risks_with_target_flags` + `tests/test_target_validation.py` (commit `8034513`)
+- [x] Task 2: wire `validate_target` into `synthesize_pick` after level parsing; surface `weak_rr` in key_risks, `target_recomputed` to run log (commit `feb2770`)
+- [x] Task 3: prompt + tool-schema project targets forward, never cap at 52w high; `format_levels_for_prompt` emits projected-target line + `tests/test_levels_prompt.py` (commit `90f2938`)
+- [x] Final whole-branch review ("ready to merge, with fixes"); applied the one pre-merge fix — value assertion on projection formula (commit `c31e9c3`)
+- [x] Full suite green: 125 passed
+- [x] Live verified via `recommend`: ALB target $176.44 (R:R 2.84:1) + APA target $38.11 (R:R 3.55:1) — both forward-looking, neither pinned to 52w high, no weak_rr flags; APA rationale explicitly cites "ATR-based swing target"
+- [ ] Still unverified live: the exact original failure case (a momentum leader sitting *at new highs*) hasn't surfaced under the current PARTIAL macro gate (scanner favoring oversold mean-reversion names)
+
+## CLI UTF-8 Encoding Fix (COMPLETE ✅ 2026-06-24, commit `e954c50`)
+
+- [x] `recommend` crashed with `UnicodeEncodeError` (`★` ★) when stdout is piped — Windows defaults pipes to cp1252; reconfigure stdout/stderr to UTF-8 at `cli.main()` entry (guarded + `errors="replace"`). Also fixes mojibake in captured nightly logs. Verified via piped `gate` (em-dash prints). Pushed to origin/main.
+
+## Execution Price Levels & Charts (COMPLETE ✅ 2026-06-17)
+
+Surface each pending buy proposal's entry/support/stop/target levels + a candlestick chart on the Execution page, reusing Recommendation-page components.
+
+- [x] Task 1: `load_recommendation(conn, rec_id)` DB helper + `tests/test_rec_load.py` (commit `7026abe`)
+- [x] Task 2: render `zone_kpi_grid_html` + lazy `candle_chart` (in `st.expander`) on pending buys in `pages/7_Execution.py` (commit `beec852`)
+- [x] Milestone marked complete + plan tracked (commit `08fd43c`); all pushed to origin/main
+- [x] Full suite green: 101 passed
+- [ ] Manual browser smoke (user action): Generate proposals during market hours → confirm KPI grid + chart expander render on #1-rec buy; runner-ups show chart only; Approve/Reject don't auto-open expanders
+- [ ] Deferred follow-up: live stop/target *tracking* (flag "below stop"/"hit target") on open positions — display-only for now
+
+## Execution Guardrail False-Flag Fixes (COMPLETE ✅ 2026-06-17, commit `2521c39`)
+
+- [x] Fix false "position exceeds max position size": `generate_proposals` now `math.floor`s shares to 6dp so notional can't round above the cap (+ `test_full_size_open_not_flagged_by_rounding`)
+- [x] Fix stale "outside regular trading hours": Execution page recomputes guardrails against current state at display time instead of trusting create-time flags
+- [x] Tighten `expire_stale` to key off the current ET trading session (not the UTC calendar date) (+ `test_expire_stale_uses_et_session_not_utc_day`)
+
+## Sync-Only Trade Log (COMPLETE ✅ 2026-06-16)
+
+Robinhood sync + paper engine are now the only writers of the trade log.
+
+- [x] Task 1: scope postmortem to strategy trades (`rec_id IS NOT NULL OR mode='paper'`) in `db.load_trades_with_context` + `dashboard/lib.load_trade_outcomes` (+ `test_postmortem_scope.py`)
+- [x] Task 2: remove CLI `log open`/`log close` (argparse now rejects them) (+ `test_cli_no_manual_log.py`)
+- [x] Task 3: Trade Log page read-only (dropped Open/Close/Edit/Delete tabs + inline buttons); removed Recommendation "Open trade from this pick" button
+- [x] Task 4: delete dead `edit_trade`/`delete_trade` from `tradelog.py`
+- [x] Task 5: one-time cleanup of phantom manual trade #3 (SNDK dup) — remaining ids [4,5,6,7]
+- [x] Task 6: update PLANNING.md milestone table + sub-project #3 section
+- [x] Full suite green: 97 passed
+
+Deferred follow-ups (from earlier sub-projects, not blocking):
+- [ ] Task 10 idempotency: replace `broker_order_ids_json LIKE` substring scan with indexed column + rollback test
+- [ ] Task 6 reconstruction: add interleaved-rebuy / negative-shares edge-case coverage
+- [ ] Task 7 rec matching: add window-boundary + same-day tie-break tests
+- [ ] Task 9 broker: harden ISO-timestamp comparison + sell-side fill normalization test
+
 ## M10 — Conversational Analyst Agent (step 9)
 
 Steps 1–8 complete. One item remaining:

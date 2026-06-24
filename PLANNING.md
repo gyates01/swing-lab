@@ -16,7 +16,7 @@ of any kind.**
 | Paper Execution Core (propose → approve → execute) | ✅ Complete | 2026-06-16 |
 | Sync-Only Trade Log (manual entry removed, postmortem scoped) | ✅ Complete | 2026-06-16 |
 | Execution Price Levels & Charts (display entry/stop/target + lazy chart) | ✅ Complete | 2026-06-17 |
-| Forward-Projected Exit Targets (ATR projection + 2:1 reward:risk gate) | ⏳ Pending | — |
+| Forward-Projected Exit Targets (ATR projection + 2:1 reward:risk gate) | ✅ Complete | 2026-06-24 |
 
 > Plan: `docs/superpowers/plans/2026-06-17-execution-price-levels.md`
 
@@ -162,4 +162,4 @@ forward and explicitly not cap breakouts at the prior high.
 
 | Milestone | Status | Date |
 |---|---|---|
-| Forward-Projected Exit Targets | ⏳ Pending | — |
+| Forward-Projected Exit Targets | ✅ Complete | 2026-06-24 |

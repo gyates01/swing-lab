@@ -35,6 +35,11 @@ RECOMMEND_TOP_N = 2              # max recommendations to output (always #1; #2 
 RECOMMEND_RED_FLAG_MAX = 2       # skip candidates with more than this many red flags
 RECOMMEND_SECOND_PICK_MIN_SCORE = 70.0  # only synthesize a 2nd pick if its blended_score clears this
 
+# Exit-target projection + reward:risk gate
+TARGET_ATR_MULTIPLE = 3.5        # ATR multiple for forward-projected swing target (~2-3wk horizon)
+TARGET_MIN_REWARD_RISK = 2.0     # min (target-entry_high)/(entry_high-stop); below this → weak_rr flag
+TARGET_MIN_UPSIDE_PCT = 0.05     # a target under this % above entry_high is degenerate → recomputed
+
 # Rebalance: bi-weekly (every other Sunday)
 REBALANCE_DAY_OF_WEEK = 6  # Sunday
 REBALANCE_EVERY_N_WEEKS = 2

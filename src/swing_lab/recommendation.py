@@ -7,6 +7,7 @@ import pandas as pd
 from swing_lab.config import (
     DATA_DIR, MAX_POSITION_PCT, MODEL, RECOMMEND_TOP_N,
     RECOMMEND_RED_FLAG_MAX, RECOMMEND_SECOND_PICK_MIN_SCORE, get_api_key,
+    TARGET_ATR_MULTIPLE, TARGET_MIN_REWARD_RISK, TARGET_MIN_UPSIDE_PCT,
 )
 from swing_lab.technicals import get_price_levels, format_levels_for_prompt
 
@@ -157,6 +158,51 @@ def _fetch_current_price(symbol: str) -> tuple[float | None, str]:
     except Exception:
         pass
     return None, ""
+
+
+def reward_risk(entry_high: float, stop: float, target: float) -> float:
+    """Reward:risk = (target - entry_high) / (entry_high - stop). 0.0 if risk <= 0."""
+    risk = entry_high - stop
+    if risk <= 0:
+        return 0.0
+    return (target - entry_high) / risk
+
+
+def validate_target(
+    entry_high: float,
+    stop: float,
+    atr: float | None,
+    model_target: float,
+) -> tuple[float, list[str]]:
+    """Own the final target. Recompute degenerate model targets (≤ the upside floor)
+    to a forward ATR projection; flag sub-threshold reward:risk. Anchored to
+    entry_high (top of the no-chasing zone) — the conservative worst-case fill, which
+    also guarantees target > entry_high so price-level ordering holds.
+    Returns (target, flags) with flags ⊆ {"target_recomputed", "weak_rr"}."""
+    flags: list[str] = []
+    atr_target = entry_high + TARGET_ATR_MULTIPLE * atr if atr is not None else entry_high * 1.10
+
+    if model_target < entry_high * (1 + TARGET_MIN_UPSIDE_PCT):
+        target = atr_target
+        flags.append("target_recomputed")
+    else:
+        target = model_target
+
+    if reward_risk(entry_high, stop, target) < TARGET_MIN_REWARD_RISK:
+        flags.append("weak_rr")
+
+    return target, flags
+
+
+def risks_with_target_flags(risks: list[str], flags: list[str], rr: float) -> list[str]:
+    """Return a copy of `risks` with a human-readable weak-R:R note appended when flagged."""
+    out = list(risks)
+    if "weak_rr" in flags:
+        out.append(
+            f"Reward:risk only {rr:.1f}:1 vs. stop — below "
+            f"{TARGET_MIN_REWARD_RISK:.0f}:1; tighten stop or pass"
+        )
+    return out
 
 
 def synthesize_pick(

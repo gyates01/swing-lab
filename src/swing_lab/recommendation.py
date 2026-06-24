@@ -303,6 +303,15 @@ Call submit_recommendation with your synthesized analysis. Price levels must be 
     support    = float(args["support"])
     stop       = float(args["stop"])
     target     = float(args["target"])
+
+    atr = levels.get("atr_14")
+    target, target_flags = validate_target(entry_high, stop, atr, target)
+    rr = reward_risk(entry_high, stop, target)
+    risks = risks_with_target_flags(args.get("key_risks") or [], target_flags, rr)
+    if "target_recomputed" in target_flags:
+        print(f"  [{symbol}] target recomputed to ${target:.2f} "
+              f"(model target was degenerate; entry_high + {TARGET_ATR_MULTIPLE}×ATR)")
+
     entry_zone_text = (
         f"${entry_low:.2f}–${entry_high:.2f}; "
         f"support at ${support:.2f}; stop below ${stop:.2f}; target ${target:.2f}"
@@ -310,7 +319,7 @@ Call submit_recommendation with your synthesized analysis. Price levels must be 
 
     return {
         "rationale": args.get("rationale", ""),
-        "risks": args.get("key_risks") or [],
+        "risks": risks,
         "exit_triggers": args.get("exit_signals") or [],
         "entry_zone": entry_zone_text,
         "entry_low":  entry_low,

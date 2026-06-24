@@ -15,6 +15,8 @@ def _levels():
 def test_projected_target_line_present():
     out = format_levels_for_prompt(_levels(), current_price=100.0)
     assert "Projected swing target" in out
+    assert "$107.00" in out
+    assert "+7%" in out
 
 
 def test_guidance_no_longer_caps_at_52w_high():

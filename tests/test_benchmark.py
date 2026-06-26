@@ -89,3 +89,33 @@ def test_inception_benchmark_missing_spy_keeps_portfolio_return():
     assert result["portfolio_return"] == pytest.approx(0.10)
     assert result["spy_return"] is None
     assert result["delta"] is None
+
+
+def test_fetch_spy_closes_returns_none_on_error(monkeypatch):
+    import swing_lab.execution.benchmark as bm
+
+    class _Boom:
+        def __init__(self, *a, **k): raise RuntimeError("offline")
+
+    monkeypatch.setattr("yfinance.Ticker", _Boom)
+    assert bm._fetch_spy_closes("2026-06-01") is None
+
+
+def test_fetch_spy_closes_returns_none_for_bad_start():
+    import swing_lab.execution.benchmark as bm
+    assert bm._fetch_spy_closes(None) is None
+
+
+def test_paper_inception_date(db_conn):
+    from swing_lab.tradelog import open_trade
+    from swing_lab.execution.benchmark import paper_inception_date
+    assert paper_inception_date(db_conn) is None
+    open_trade(db_conn, "AAPL", 10.0, 100.0, mode="paper")
+    assert paper_inception_date(db_conn) is not None
+
+
+def test_paper_inception_date_ignores_live(db_conn):
+    from swing_lab.tradelog import open_trade
+    from swing_lab.execution.benchmark import paper_inception_date
+    open_trade(db_conn, "LIVE", 10.0, 100.0)  # mode defaults to 'live'
+    assert paper_inception_date(db_conn) is None

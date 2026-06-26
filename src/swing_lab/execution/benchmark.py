@@ -67,3 +67,23 @@ def inception_benchmark(starting_cash, equity, inception_date, spy_price_at, tod
     else:
         spy_return = delta = None
     return {"portfolio_return": portfolio_return, "spy_return": spy_return, "delta": delta}
+
+
+def _fetch_spy_closes(start_date):
+    """One yfinance pull of SPY daily closes from start_date..today. None on failure."""
+    try:
+        import yfinance as yf
+        start = _to_date(start_date)
+        if start is None:
+            return None
+        closes = yf.Ticker("SPY").history(start=start.isoformat())["Close"]
+        return closes if len(closes) else None
+    except Exception:
+        return None
+
+
+def paper_inception_date(conn) -> str | None:
+    row = conn.execute(
+        "SELECT MIN(opened_at) FROM trades WHERE mode = 'paper'"
+    ).fetchone()
+    return row[0] if row and row[0] else None

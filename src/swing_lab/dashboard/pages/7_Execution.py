@@ -1,13 +1,18 @@
 """Page 7 — Paper Execution: review/approve/reject/execute the order queue."""
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 import streamlit as st
 
+from swing_lab.config import PAPER_STARTING_CASH
 from swing_lab.dashboard import sidebar_chat
 from swing_lab.dashboard.charts import candle_chart
 from swing_lab.dashboard.theme import inject, render_topbar, zone_kpi_grid_html
 from swing_lab.db import init_db, load_recommendation
 from swing_lab.execution import guardrails, orders
+from swing_lab.execution.benchmark import (
+    per_position_benchmark, inception_benchmark, spy_price_lookup,
+    _fetch_spy_closes, paper_inception_date,
+)
 from swing_lab.execution.executor import execute_approved
 from swing_lab.execution.paper_account import (
     account_state_for_guardrails,
@@ -21,6 +26,11 @@ sidebar_chat.render()
 render_topbar()
 
 conn = init_db()
+
+
+@st.cache_data(ttl=3600)
+def _spy_closes_cached(start_iso: str):
+    return _fetch_spy_closes(start_iso)
 
 st.header("Paper Execution")
 
@@ -100,10 +110,42 @@ m1, m2, m3 = st.columns(3)
 m1.metric("Equity", f"${state['equity']:,.2f}")
 m2.metric("Cash", f"${state['cash']:,.2f}")
 m3.metric("Unrealized P&L", f"${state['unrealized']:,.2f}")
+
+# --- vs S&P 500 ---
+today = date.today()
+inception = paper_inception_date(conn)
+spy_at = spy_price_lookup(_spy_closes_cached(inception) if inception else None)
+
+headline = inception_benchmark(PAPER_STARTING_CASH, state["equity"], inception, spy_at, today)
+if headline:
+    b1, b2 = st.columns(2)
+    port = headline["portfolio_return"]
+    spy_ret = headline["spy_return"]
+    delta = headline["delta"]
+    if delta is not None:
+        b1.metric("Portfolio return", f"{port:+.1%}", delta=f"{delta:+.1%} vs S&P 500")
+        b2.metric("S&P 500 return", f"{spy_ret:+.1%}")
+    else:
+        b1.metric("Portfolio return", f"{port:+.1%}")
+        b2.metric("S&P 500 return", "—")
+    st.caption(
+        "S&P 500 baseline = the same starting cash placed in SPY on your first "
+        "paper trade date and held. Your cash deploys gradually, so this slightly "
+        "favors SPY (fully invested from day one)."
+    )
+
 if state["open_positions"]:
+    rows = per_position_benchmark(state["open_positions"], spy_at, today)
+
+    def _pct(v):
+        return f"{v:+.1%}" if v is not None else "—"
+
     st.dataframe([{"symbol": p["symbol"], "shares": p["shares"],
                    "entry": p["entry_price"], "quote": p["quote"],
-                   "market_value": p["market_value"], "unrealized": p["unrealized"]}
-                  for p in state["open_positions"]], use_container_width=True)
+                   "market_value": p["market_value"], "unrealized": p["unrealized"],
+                   "since entry": _pct(p["stock_return"]),
+                   "SPY": _pct(p["spy_return"]),
+                   "vs SPY": _pct(p["alpha"])}
+                  for p in rows], use_container_width=True)
 else:
     st.caption("No open paper positions.")

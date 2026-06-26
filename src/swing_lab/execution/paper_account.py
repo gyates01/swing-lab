@@ -36,6 +36,7 @@ def paper_account_state(conn, quote_fn=get_quote) -> dict:
             "trade_id": t["trade_id"], "symbol": t["symbol"], "shares": t["shares"],
             "entry_price": t["entry_price"], "quote": quote,
             "market_value": value, "unrealized": value - basis,
+            "opened_at": t["opened_at"],
         })
 
     return {

@@ -52,6 +52,13 @@ def test_live_trades_excluded(db_conn):
     assert state["open_symbols"] == set()
 
 
+def test_position_includes_opened_at(db_conn):
+    from swing_lab.execution.paper_account import paper_account_state
+    _open_paper(db_conn, "AAPL", 10.0, 100.0)
+    state = paper_account_state(db_conn, quote_fn=lambda s: 120.0)
+    assert state["open_positions"][0]["opened_at"] is not None
+
+
 def test_account_state_for_guardrails_includes_daily_stats(db_conn):
     from swing_lab.execution import orders
     from swing_lab.execution.paper_account import account_state_for_guardrails

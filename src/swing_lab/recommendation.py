@@ -196,6 +196,23 @@ def validate_target(
     return target, flags
 
 
+def _as_str_list(value) -> list[str]:
+    """Coerce a model-supplied field to a clean list of strings.
+
+    submit_recommendation declares key_risks/exit_signals as arrays, but the
+    API enforces tool schemas only best-effort — the model can still return a
+    bare string. Without this, list("text") would explode it into characters.
+    """
+    if value is None:
+        return []
+    if isinstance(value, str):
+        value = value.strip()
+        return [value] if value else []
+    if isinstance(value, (list, tuple)):
+        return [str(v).strip() for v in value if str(v).strip()]
+    return [str(value)]
+
+
 def risks_with_target_flags(risks: list[str], flags: list[str], rr: float) -> list[str]:
     """Return a copy of `risks` with a human-readable weak-R:R note appended when flagged."""
     out = list(risks)
@@ -309,7 +326,7 @@ Call submit_recommendation with your synthesized analysis. Price levels must be 
     atr = levels.get("atr_14")
     target, target_flags = validate_target(entry_high, stop, atr, target)
     rr = reward_risk(entry_high, stop, target)
-    risks = risks_with_target_flags(args.get("key_risks") or [], target_flags, rr)
+    risks = risks_with_target_flags(_as_str_list(args.get("key_risks")), target_flags, rr)
     if "target_recomputed" in target_flags:
         print(f"  [{symbol}] target recomputed to ${target:.2f} "
               f"(model target was degenerate; entry_high + {TARGET_ATR_MULTIPLE}×ATR)")
@@ -322,7 +339,7 @@ Call submit_recommendation with your synthesized analysis. Price levels must be 
     return {
         "rationale": args.get("rationale", ""),
         "risks": risks,
-        "exit_triggers": args.get("exit_signals") or [],
+        "exit_triggers": _as_str_list(args.get("exit_signals")),
         "entry_zone": entry_zone_text,
         "entry_low":  entry_low,
         "entry_high": entry_high,

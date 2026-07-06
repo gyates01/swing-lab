@@ -22,3 +22,7 @@ Types: `functional` (features/logic), `backend` (data/DB), `interactive` (UX/CLI
 | 2026-05-30 | v1.9.1 | functional | Automation: scheduled Sunday gate/scan/review → Obsidian writeback |
 | 2026-05-30 | v1.9.2 | interactive | Charts: recommendation level labels on price + momentum charts |
 | 2026-05-29 | — | — | Structured per /new-project: PROJECT.md, PLANNING.md, CHANGELOG.md, TASKS.md added; CLAUDE.md updated |
+| 2026-06-11 | v1.10 | functional | Full code audit (AUDIT-2026-06-11.md): 13 findings fixed — batched yf.download (scan ~10s), survivorship-free backtest (point-in-time membership + delisting capture), vix_score fallback, review_id wiring, analyst loop max_tokens handling, forced tool_choice reviews, zoneinfo DST, tradelog hygiene |
+| 2026-06-11 | v1.11 | research | Backtest upgrades: SPY benchmark line + stats, `--with-gate` (point-in-time gate replay), `--rank raw\|sector`, `--top N` |
+| 2026-06-11 | v1.12 | research | Factor-crowding signal fixed: market-excess MTUM/VLUE correlation (raw correlation measured shared beta, pinning signal ~12/100; live gate scores now read ~5–10 pts higher) |
+| 2026-06-11 | — | research | **Backtest verdict (see PROJECT.md):** no configuration beat SPY 2015–2024 on absolute or risk-adjusted return; gate = effective risk reducer (max DD halved at equal Sharpe), not return enhancer; raw+concentrated added return but cost Sharpe and drawdown |

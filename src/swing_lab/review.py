@@ -25,19 +25,29 @@ If none, return an empty list.
 
 one_line_summary: One sentence stating the investment thesis or primary concern.
 
-Respond ONLY with valid JSON matching this exact schema:
-{
-  "symbol": "string",
-  "scores": {
-    "earnings_quality": number,
-    "growth": number,
-    "balance_sheet": number,
-    "margins": number
-  },
-  "composite_1_to_10": number,
-  "red_flags": ["string"],
-  "one_line_summary": "string"
-}"""
+Submit your analysis by calling the submit_review tool."""
+
+_REVIEW_TOOL = {
+    "name": "submit_review",
+    "description": "Submit the structured analyst review for the candidate.",
+    "input_schema": {
+        "type": "object",
+        "required": [
+            "symbol", "earnings_quality", "growth", "balance_sheet",
+            "margins", "composite_1_to_10", "red_flags", "one_line_summary",
+        ],
+        "properties": {
+            "symbol":            {"type": "string"},
+            "earnings_quality":  {"type": "number", "minimum": 1, "maximum": 10},
+            "growth":            {"type": "number", "minimum": 1, "maximum": 10},
+            "balance_sheet":     {"type": "number", "minimum": 1, "maximum": 10},
+            "margins":           {"type": "number", "minimum": 1, "maximum": 10},
+            "composite_1_to_10": {"type": "number", "minimum": 1, "maximum": 10},
+            "red_flags":         {"type": "array", "items": {"type": "string"}},
+            "one_line_summary":  {"type": "string"},
+        },
+    },
+}
 
 
 def blend(quant_score: float, claude_score: float, w_quant: float = 0.6, w_claude: float = 0.4) -> float:
@@ -86,6 +96,8 @@ def review_candidates(top_n_df: pd.DataFrame, progress=None) -> pd.DataFrame:
                 model=MODEL,
                 max_tokens=1024,
                 betas=["cache-diagnosis-2026-04-07"],
+                tools=[_REVIEW_TOOL],
+                tool_choice={"type": "tool", "name": "submit_review"},
                 system=[
                     {
                         "type": "text",
@@ -118,12 +130,15 @@ def review_candidates(top_n_df: pd.DataFrame, progress=None) -> pd.DataFrame:
                 elif cache_read > 0:
                     print("  [cache hit]")
 
-            raw_text = response.content[0].text
-            claude_data = json.loads(raw_text)
+            tool_block = next(
+                (b for b in response.content if getattr(b, "type", "") == "tool_use"),
+                None,
+            )
+            if tool_block is None:
+                print(f"  WARNING: no submit_review tool call for {symbol} — skipping")
+                continue
+            claude_data = tool_block.input
 
-        except json.JSONDecodeError:
-            print(f"  WARNING: Failed to parse Claude response for {symbol} — skipping")
-            continue
         except Exception as exc:
             print(f"  WARNING: Claude call failed for {symbol}: {exc} — skipping")
             continue

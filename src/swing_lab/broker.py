@@ -96,8 +96,8 @@ class RobinhoodClient:
         """Account equity/buying-power/cash -> {total_equity, buying_power, cash}.
 
         Sourced from api.robinhood.com (portfolio + account profiles). The phoenix
-        unified endpoint exposes the same data but sits behind a TLS-fingerprinting
-        WAF that refuses non-browser clients, so it is unreachable from here.
+        unified endpoint exposes the same data but rejects programmatic clients, so
+        it is unreachable from here.
         """
         portfolio = rh.load_portfolio_profile() or {}
         account = rh.load_account_profile() or {}

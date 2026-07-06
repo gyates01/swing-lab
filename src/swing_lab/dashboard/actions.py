@@ -22,12 +22,13 @@ def refresh_gate(progress=None) -> dict:
     return gate
 
 
-def refresh_scan(progress=None) -> tuple[int, dict, pd.DataFrame]:
+def refresh_scan(progress=None, strategy: str = None) -> tuple[int, dict, pd.DataFrame]:
     """Run gate + scan, persist, return (scan_id, gate, picks_df).
 
     picks_df has columns: symbol, sector, momentum, score, gate_sizing.
     Raises RuntimeError if gate is STAND DOWN.
     progress: optional callable(current, total, symbol) forwarded to score_universe.
+    strategy: optional strategy filter name (e.g. 'trend-join-long').
     """
     gate = compute_gate()
     if gate["sizing"] == 0.0:
@@ -36,6 +37,15 @@ def refresh_scan(progress=None) -> tuple[int, dict, pd.DataFrame]:
     universe = fetch_sp500()
     scored = score_universe(universe, progress=progress)
     picks = top_n_picks(scored, gate["sizing"])
+
+    # Apply strategy filter if requested
+    if strategy:
+        from swing_lab.strategy_filter import filter_candidates
+        symbols = picks["symbol"].tolist()
+        checks = filter_candidates(symbols, strategy=strategy)
+        passing = [s for s, c in checks.items() if c.passed]
+        picks = picks[picks["symbol"].isin(passing)].reset_index(drop=True)
+        print(f"  Strategy filter '{strategy}': {len(passing)}/{len(symbols)} passed")
 
     conn = init_db()
     try:
@@ -46,45 +56,56 @@ def refresh_scan(progress=None) -> tuple[int, dict, pd.DataFrame]:
     return scan_id, gate, picks
 
 
-def refresh_review(scan_progress=None, review_progress=None) -> tuple[int, pd.DataFrame]:
-    """Run gate + scan + Claude review, persist, return (scan_id, reviews_df).
+def refresh_review(scan_progress=None, review_progress=None,
+                   strategy: str = None) -> tuple[int, dict, pd.DataFrame]:
+    """Run gate + scan + Claude review, persist, return (scan_id, gate, reviews_df).
 
+    reviews_df includes a review_id column linking back to the reviews table.
     scan_progress: callback(current, total, symbol) for the scanner phase.
     review_progress: callback(current, total, symbol) for the review phase.
+    strategy: optional strategy filter name (e.g. 'trend-join-long').
     Raises RuntimeError if gate is STAND DOWN.
     """
-    scan_id, gate, picks = refresh_scan(progress=scan_progress)
+    scan_id, gate, picks = refresh_scan(progress=scan_progress, strategy=strategy)
     reviews_df = review_candidates(picks, progress=review_progress)
 
     conn = init_db()
     try:
-        save_reviews(conn, scan_id, reviews_df)
+        review_ids = save_reviews(conn, scan_id, reviews_df)
     finally:
         conn.close()
 
-    return scan_id, reviews_df
+    if not reviews_df.empty:
+        reviews_df = reviews_df.copy()
+        reviews_df["review_id"] = reviews_df["symbol"].map(review_ids)
+
+    return scan_id, gate, reviews_df
 
 
 def refresh_recommend(
     scan_progress=None,
     review_progress=None,
     rec_progress=None,
+    strategy: str = None,
 ) -> tuple[int, list[dict]]:
     """Run gate + scan + review + recommendation engine, persist, return (batch_id, recs).
 
     Raises RuntimeError if gate is STAND DOWN.
+    strategy: optional strategy filter name (e.g. 'trend-join-long').
     """
     from swing_lab.tradelog import open_trades
     from swing_lab.recommendation import generate_recommendations
 
-    scan_id, reviews_df = refresh_review(
+    scan_id, gate, reviews_df = refresh_review(
         scan_progress=scan_progress,
         review_progress=review_progress,
+        strategy=strategy,
     )
 
     conn = init_db()
     try:
-        gate = compute_gate()
+        # Reuse the gate computed during the scan — recomputing here could
+        # disagree with the gate the scan was sized under (and wastes ~30s).
         open_positions = open_trades(conn)
 
         if rec_progress:

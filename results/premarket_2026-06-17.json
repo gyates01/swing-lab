@@ -1,0 +1,9 @@
+{
+  "scanned_at": "2026-06-17T12:30:28.077423+00:00",
+  "source": "finviz",
+  "total_scanned": 0,
+  "candidates": [],
+  "errors": [
+    "No pre-market gapper data found on Finviz"
+  ]
+}

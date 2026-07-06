@@ -82,7 +82,6 @@ BXP,Real Estate
 CHRW,Industrials
 CDNS,Information Technology
 CPT,Real Estate
-CPB,Consumer Staples
 COF,Financials
 CAH,Health Care
 CCL,Consumer Discretionary
@@ -121,7 +120,6 @@ COIN,Financials
 CL,Consumer Staples
 CMCSA,Communication Services
 FIX,Industrials
-CAG,Consumer Staples
 COP,Energy
 ED,Utilities
 STZ,Consumer Staples
@@ -164,7 +162,7 @@ DUK,Utilities
 DD,Materials
 ETN,Industrials
 EBAY,Consumer Discretionary
-SATS,Communication Services
+ECHO,Communication Services
 ECL,Materials
 EIX,Utilities
 EW,Health Care
@@ -174,7 +172,6 @@ EME,Industrials
 EMR,Industrials
 ETR,Utilities
 EOG,Energy
-EPAM,Information Technology
 EQT,Energy
 EFX,Industrials
 EQIX,Real Estate
@@ -197,11 +194,13 @@ FICO,Information Technology
 FAST,Industrials
 FRT,Real Estate
 FDX,Industrials
+FDXF,Industrials
 FIS,Financials
 FITB,Financials
 FSLR,Information Technology
 FE,Utilities
 FISV,Financials
+FLEX,Information Technology
 F,Consumer Discretionary
 FTNT,Information Technology
 FTV,Industrials
@@ -235,6 +234,7 @@ HSY,Consumer Staples
 HPE,Information Technology
 HLT,Consumer Discretionary
 HD,Consumer Discretionary
+HONA,Industrials
 HON,Industrials
 HRL,Consumer Staples
 HST,Real Estate
@@ -301,6 +301,7 @@ MPC,Energy
 MAR,Consumer Discretionary
 MRSH,Financials
 MLM,Materials
+MRVL,Information Technology
 MAS,Industrials
 MA,Financials
 MKC,Consumer Staples
@@ -369,7 +370,6 @@ PM,Consumer Staples
 PSX,Energy
 PNW,Utilities
 PNC,Financials
-POOL,Consumer Discretionary
 PPG,Materials
 PPL,Utilities
 PFG,Financials

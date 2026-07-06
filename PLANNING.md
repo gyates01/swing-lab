@@ -1,5 +1,7 @@
 # Execution Page S&P 500 Benchmark — Implementation Plan
 
+> **STATUS: ✅ COMPLETE (2026-06-26).** All 4 tasks executed via TDD, 144 tests green, browser-verified, pushed to origin/main (HEAD `3629c57`). Commits: `5623ee0` (Task 1), `6983456` (Task 2), `60c39b1` (Task 3), `217131f` (Task 4).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Show on the Execution page whether paper trades are beating "just holding the S&P 500" — per-position alpha plus a since-inception headline.
@@ -32,7 +34,7 @@
   - `per_position_benchmark(positions: list[dict], spy_price_at, today) -> list[dict]`
   - `inception_benchmark(starting_cash, equity, inception_date, spy_price_at, today) -> dict | None`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_benchmark.py
@@ -129,12 +131,12 @@ def test_inception_benchmark_missing_spy_keeps_portfolio_return():
     assert result["delta"] is None
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `uv run pytest tests/test_benchmark.py -q`
 Expected: FAIL — `ModuleNotFoundError: No module named 'swing_lab.execution.benchmark'`
 
-- [ ] **Step 3: Write the minimal implementation**
+- [x] **Step 3: Write the minimal implementation**
 
 ```python
 # src/swing_lab/execution/benchmark.py
@@ -209,12 +211,12 @@ def inception_benchmark(starting_cash, equity, inception_date, spy_price_at, tod
     return {"portfolio_return": portfolio_return, "spy_return": spy_return, "delta": delta}
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `uv run pytest tests/test_benchmark.py -q`
 Expected: PASS (9 passed)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/swing_lab/execution/benchmark.py tests/test_benchmark.py
@@ -235,7 +237,7 @@ git commit -m "feat: pure SPY benchmark compute for paper positions"
   - `_fetch_spy_closes(start_date) -> "pd.Series | None"`
   - `paper_inception_date(conn) -> str | None`
 
-- [ ] **Step 1: Write the failing test (append to tests/test_benchmark.py)**
+- [x] **Step 1: Write the failing test (append to tests/test_benchmark.py)**
 
 ```python
 def test_fetch_spy_closes_returns_none_on_error(monkeypatch):
@@ -268,12 +270,12 @@ def test_paper_inception_date_ignores_live(db_conn):
     assert paper_inception_date(db_conn) is None
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `uv run pytest tests/test_benchmark.py -k "fetch_spy or inception_date" -q`
 Expected: FAIL — `AttributeError: module ... has no attribute '_fetch_spy_closes'`
 
-- [ ] **Step 3: Add the implementation (append to benchmark.py)**
+- [x] **Step 3: Add the implementation (append to benchmark.py)**
 
 ```python
 def _fetch_spy_closes(start_date):
@@ -296,12 +298,12 @@ def paper_inception_date(conn) -> str | None:
     return row[0] if row and row[0] else None
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `uv run pytest tests/test_benchmark.py -q`
 Expected: PASS (13 passed)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/swing_lab/execution/benchmark.py tests/test_benchmark.py
@@ -319,7 +321,7 @@ git commit -m "feat: SPY fetch helper + paper inception-date query"
 **Interfaces:**
 - Produces: each dict in `paper_account_state(...)["open_positions"]` now includes key `opened_at`.
 
-- [ ] **Step 1: Write the failing test (append to tests/test_paper_account.py)**
+- [x] **Step 1: Write the failing test (append to tests/test_paper_account.py)**
 
 ```python
 def test_position_includes_opened_at(db_conn):
@@ -329,12 +331,12 @@ def test_position_includes_opened_at(db_conn):
     assert state["open_positions"][0]["opened_at"] is not None
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run: `uv run pytest tests/test_paper_account.py::test_position_includes_opened_at -q`
 Expected: FAIL — `KeyError: 'opened_at'`
 
-- [ ] **Step 3: Add `opened_at` to the position dict**
+- [x] **Step 3: Add `opened_at` to the position dict**
 
 In `paper_account.py`, in the `positions.append({...})` block inside `paper_account_state`, add the `opened_at` field:
 
@@ -347,12 +349,12 @@ In `paper_account.py`, in the `positions.append({...})` block inside `paper_acco
         })
 ```
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run: `uv run pytest tests/test_paper_account.py -q`
 Expected: PASS (all paper_account tests)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/swing_lab/execution/paper_account.py tests/test_paper_account.py
@@ -371,7 +373,7 @@ git commit -m "feat: include opened_at on paper position dicts"
 
 This task changes Streamlit view code, which isn't unit-tested; verification is an import-smoke check plus a manual browser pass.
 
-- [ ] **Step 1: Add a cached SPY fetch + imports near the top of the file**
+- [x] **Step 1: Add a cached SPY fetch + imports near the top of the file**
 
 Add to the imports block:
 
@@ -389,7 +391,7 @@ def _spy_closes_cached(start_iso: str):
     return _fetch_spy_closes(start_iso)
 ```
 
-- [ ] **Step 2: Replace the "Paper portfolio" section body**
+- [x] **Step 2: Replace the "Paper portfolio" section body**
 
 Replace the current block (from `st.subheader("Paper portfolio")` through the open-positions `else: st.caption(...)`) with:
 
@@ -441,24 +443,24 @@ else:
     st.caption("No open paper positions.")
 ```
 
-- [ ] **Step 3: Import-smoke check (catches syntax/import errors without a browser)**
+- [x] **Step 3: Import-smoke check (catches syntax/import errors without a browser)**
 
 Run: `uv run python -c "import ast; ast.parse(open('src/swing_lab/dashboard/pages/7_Execution.py').read()); print('ok')"`
 Expected: `ok`
 
-- [ ] **Step 4: Run the full test suite (no regressions)**
+- [x] **Step 4: Run the full test suite (no regressions)**
 
 Run: `uv run pytest -q`
 Expected: PASS (all tests green)
 
-- [ ] **Step 5: Manual browser verification**
+- [x] **Step 5: Manual browser verification**
 
 Run: `uv run streamlit run src/swing_lab/dashboard/Home.py` (or the project's dashboard entrypoint), open the **Execution** page, and confirm:
 - The "Portfolio return / S&P 500 return" metric pair renders, delta arrow green when ahead.
 - The open-positions table shows `since entry`, `SPY`, `vs SPY` columns with signed percentages.
 - With no open positions, only the headline (or nothing, if no paper trades) shows — no crash.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/swing_lab/dashboard/pages/7_Execution.py

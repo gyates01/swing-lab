@@ -1,5 +1,25 @@
 # Swing Lab — Active Tasks
 
+## Execution Page S&P 500 Benchmark (COMPLETE ✅ 2026-06-26)
+
+Show whether paper trades are beating "just holding the S&P 500" — per-position alpha (A) + since-inception headline (C). Execution page only. Pushed to origin/main (HEAD `3629c57`).
+
+- [x] Task 1: pure `execution/benchmark.py` — `_to_date`, `spy_price_lookup` (nearest-prior via `.asof()`), `per_position_benchmark`, `inception_benchmark` + `tests/test_benchmark.py` (commit `5623ee0`)
+- [x] Task 2: `_fetch_spy_closes` (one yfinance pull, None on failure) + `paper_inception_date(conn)` query (commit `6983456`)
+- [x] Task 3: add `opened_at` to `paper_account_state` position dicts (needed for per-position holding window) (commit `60c39b1`)
+- [x] Task 4: render on `pages/7_Execution.py` — Portfolio/S&P metric pair with delta, disclosure caption, `since entry`/`SPY`/`vs SPY` table columns; cached `_spy_closes_cached` (commit `217131f`)
+- [x] Full suite green: 144 passed
+- [x] Browser-verified live: headline (-0.7% port / -1.4% SPY / +0.6% delta) + 4-row per-position table (TPR/HST/FIX/IVZ) all render correctly; per-position SPY differs by holding window as designed
+
+## Recommendation Char-Explosion Bug Fix (COMPLETE ✅ 2026-06-26, commit `3629c57`)
+
+Recommendation page rendered `key_risks`/`exit_signals` letter-by-letter. Root cause: model (tool_use, `type:array` is best-effort not strict) returned bare strings; `list(risks)` exploded into chars and `exit_signals` got double-JSON-encoded.
+
+- [x] Add `_as_str_list()` coercion helper at the model boundary in `recommendation.py` (wraps bare string in list, splits real lists, strips empties)
+- [x] Wire into `key_risks` (line ~312) and `exit_signals`→`exit_triggers` (line ~325)
+- [x] 5 regression tests in `tests/test_rec_field_coercion.py` incl. `test_bare_string_is_not_exploded`
+- [x] One-time DB repair of rec 48 (backed up `data/swing.db` first, dry-ran, verified) — rejoined char-list, wrapped bare string
+
 ## Forward-Projected Exit Targets (COMPLETE ✅ 2026-06-24)
 
 Replace backward-looking 52w-high/swing-high target anchoring with a forward-projected ATR-based target gated on 2:1 reward:risk. Pushed to origin/main.

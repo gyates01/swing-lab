@@ -1,0 +1,13 @@
+=== AFTERNOON — 2026-06-12T11:00:29.379108 ===
+
+MACRO GATE — PARTIAL
+  Composite score: 58.0/100
+  Deployment sizing: 60%
+
+Components:
+  vix_level           : 41.1
+  vix_term_structure  : 75.2
+  breadth             : 100.0
+  credit_spread       : 56.8
+  put_call            : 63.1
+  factor_crowding     : 12.1

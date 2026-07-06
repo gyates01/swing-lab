@@ -100,8 +100,6 @@ def _tool_deep_dive_ticker(symbol: str) -> dict:
     import pandas as pd
     from swing_lab.scanner import compute_momentum
     from swing_lab.review import review_candidates
-    from swing_lab.db import init_db, save_reviews
-    from swing_lab.dashboard.lib import load_scans
 
     momentum = compute_momentum(symbol)
     candidate_df = pd.DataFrame([{
@@ -115,15 +113,9 @@ def _tool_deep_dive_ticker(symbol: str) -> dict:
     if reviews_df.empty:
         return {"error": "Review returned no results"}
 
-    scans_df = load_scans(limit=1)
-    if not scans_df.empty:
-        scan_id = int(scans_df.iloc[0]["scan_id"])
-        conn = init_db()
-        try:
-            save_reviews(conn, scan_id, reviews_df)
-        finally:
-            conn.close()
-
+    # NOTE: deliberately NOT persisted to the reviews table — ad-hoc deep
+    # dives use a placeholder quant score and aren't tied to any scan, so
+    # storing them would pollute scan-derived review data.
     row = reviews_df.iloc[0]
     return {
         "symbol": symbol,
@@ -296,12 +288,6 @@ def run_turn(
                 print(f"  [analyst cache] {status}", flush=True)
         is_first_call = False
 
-        if response.stop_reason == "end_turn":
-            text_parts = [b.text for b in response.content if hasattr(b, "text")]
-            assistant_text = "\n\n".join(text_parts)
-            messages.append({"role": "assistant", "content": response.content})
-            break
-
         if response.stop_reason == "tool_use":
             messages.append({"role": "assistant", "content": response.content})
             tool_results = []
@@ -315,6 +301,23 @@ def run_turn(
                         "content": json.dumps(result, default=str),
                     })
             messages.append({"role": "user", "content": tool_results})
+            continue
+
+        # end_turn, max_tokens, or any other stop reason: take what we got and
+        # stop. (Previously unhandled stop reasons re-sent the identical
+        # request until the turn limit — burning tokens for nothing.)
+        text_parts = [b.text for b in response.content if hasattr(b, "text")]
+        assistant_text = "\n\n".join(text_parts)
+        if response.stop_reason == "max_tokens":
+            assistant_text = (assistant_text + "\n\n*(response truncated — token limit reached)*").strip()
+        messages.append({"role": "assistant", "content": response.content})
+        break
+    else:
+        # Turn limit exhausted while the model was still calling tools.
+        assistant_text = (
+            "I hit the tool-use turn limit before finishing a final answer — "
+            "try asking a narrower question."
+        )
 
     if cache_read > 0:
         print(f"  [analyst: cache hit — {cache_read:,} tokens saved]")

@@ -3,8 +3,8 @@
 ## Project Overview
 Short-term momentum swing trading research tool. Python package at `src/swing_lab/`, run via `uv run swing-lab <command>`.
 
-## Active Plan
-See `PLAN.md` in this directory — 5-milestone rollout. Milestones 1-2 complete, Milestones 3a onward in progress.
+## Status
+All milestones complete except M10 step 9 (Conversational Analyst Agent final wiring). See PLANNING.md for full milestone table. See TASKS.md for the one pending item.
 
 ## Stack
 - Python 3.11+, uv for packaging

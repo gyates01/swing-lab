@@ -1,5 +1,7 @@
-"""Page 6 — Trade Postmortem & Learning Engine."""
+"""Trade Postmortem & Learning Engine."""
+import html
 import json
+import re
 import streamlit as st
 import pandas as pd
 from swing_lab.dashboard import sidebar_chat
@@ -16,6 +18,20 @@ def _count_json(val) -> int:
         return len(json.loads(val or "[]"))
     except Exception:
         return 0
+
+
+def _summary_html(text: str) -> str:
+    """Claude's summary is markdown; the card is raw HTML with pre-wrap.
+    Convert the two constructs Claude actually emits (## headings, **bold**)
+    so they don't show up literally."""
+    s = html.escape(text or "")
+    s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s, flags=re.S)
+    s = re.sub(
+        r"^#{1,4}\s+(.+)$",
+        rf'<span style="color:{TEXT};font-weight:700;font-size:0.95rem;">\1</span>',
+        s, flags=re.M,
+    )
+    return s
 
 
 def _outcomes_table_html(df: pd.DataFrame) -> str:
@@ -165,7 +181,7 @@ else:
 <div style="background:{CARD};border:1px solid {BORDER};border-radius:12px;
             padding:24px 28px;margin-bottom:24px;line-height:1.7;
             color:{TEXT_MUTED};font-size:0.875rem;white-space:pre-wrap;">
-{latest['summary_text']}
+{_summary_html(latest['summary_text'])}
 </div>""",
         unsafe_allow_html=True,
     )

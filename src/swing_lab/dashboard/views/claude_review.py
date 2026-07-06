@@ -146,7 +146,7 @@ a *filter*, demoting candidates with fundamental red flags even when their price
             st.markdown(metric_html(
                 "Top Pick (Blended)",
                 top["symbol"],
-                sub=f'Blended score: {top.get("blended_score", 0):.2f}/10',
+                sub=f'Blended score: {top.get("blended_score", 0):.1f}/100',
                 accent_color=GREEN,
             ), unsafe_allow_html=True)
     with c3:
@@ -167,11 +167,12 @@ a *filter*, demoting candidates with fundamental red flags even when their price
         except Exception:
             pass
 
-        # Build a narrative based on the data — no extra Claude call
-        if top_score >= 7.5:
+        # Build a narrative based on the data — no extra Claude call.
+        # blended_score is on a 0–100 scale (see review.py: blend(quant, claude*10)).
+        if top_score >= 75:
             strength = f"a <strong style='color:{GREEN}'>strong</strong> signal"
             action = "This is a high-conviction candidate — the momentum is confirmed by solid fundamentals."
-        elif top_score >= 6.0:
+        elif top_score >= 60:
             strength = f"a <strong style='color:{AMBER}'>moderate</strong> signal"
             action = "Reasonable candidate. Check the red flags below before sizing in."
         else:
@@ -210,11 +211,11 @@ a *filter*, demoting candidates with fundamental red flags even when their price
             f'letter-spacing:0.09em;margin-bottom:10px;">WHAT THIS REVIEW MEANS</div>'
             f'<p style="color:{TEXT_MUTED};margin:0 0 8px;line-height:1.65;">'
             f'The top pick is <strong style="color:{TEXT}">{top["symbol"]}</strong> with {strength}'
-            f' (blended {top_score:.2f}/10). {action}</p>'
+            f' (blended {top_score:.1f}/100). {action}</p>'
             f'{_extra}'
             f'<p style="color:{TEXT_DIM};font-size:0.8rem;margin:8px 0 0;">'
             f'{clean_count} of {len(reviews)} candidates have no red flags.'
-            f' Average blended score: <strong style="color:{TEXT}">{avg_blended:.2f}/10</strong>.</p>'
+            f' Average blended score: <strong style="color:{TEXT}">{avg_blended:.1f}/100</strong>.</p>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -249,11 +250,11 @@ a *filter*, demoting candidates with fundamental red flags even when their price
 <div style="background:{CARD};border:1px solid {BORDER};border-top:2px solid {ACCENT};
             border-radius:8px;padding:14px 16px;">
     <div style="color:{TEXT_DIM};font-size:0.68rem;text-transform:uppercase;
-                letter-spacing:0.08em;margin-bottom:6px;">Blended Score (0–10)</div>
+                letter-spacing:0.08em;margin-bottom:6px;">Blended Score (0–100)</div>
     <div style="color:{TEXT_MUTED};font-size:0.82rem;line-height:1.55;">
-        Final ranking score: 60% quant + 40% Claude.
-        <strong style="color:{GREEN}">&gt;7.5 = strong buy candidate.</strong>
-        5–7.5 = watchlist. Below 5 = pass.
+        Final ranking score: 60% quant + 40% Claude (Claude's 1–10 scaled up ×10).
+        <strong style="color:{GREEN}">&gt;75 = strong buy candidate.</strong>
+        50–75 = watchlist. Below 50 = pass.
         A high quant but low Claude score means price is running ahead of fundamentals.
     </div>
 </div>
@@ -270,8 +271,9 @@ a *filter*, demoting candidates with fundamental red flags even when their price
     ), unsafe_allow_html=True)
 
     symbols = reviews["symbol"].tolist()
-    blended = reviews["blended_score"].fillna(0).tolist()
-    quant_norm = [q / 10 for q in reviews["quant_score"].fillna(0).tolist()]  # normalize 0-100 → 0-10
+    # blended and quant are 0-100; normalize both to 0-10 so all three series share the axis
+    blended_norm = [b / 10 for b in reviews["blended_score"].fillna(0).tolist()]
+    quant_norm = [q / 10 for q in reviews["quant_score"].fillna(0).tolist()]
     claude_scores = reviews["claude_score"].fillna(0).tolist()
 
     fig = make_fig(
@@ -282,17 +284,18 @@ a *filter*, demoting candidates with fundamental red flags even when their price
         margin=dict(l=48, r=24, t=24, b=40),
     )
     fig.add_trace(go.Bar(
-        name="Blended",
+        name="Blended (÷10)",
         x=symbols,
-        y=blended,
+        y=blended_norm,
         marker_color=ACCENT,
         marker_line_color=BORDER,
         marker_line_width=1,
         opacity=0.95,
-        text=[f"{v:.2f}" for v in blended],
+        text=[f"{v * 10:.0f}" for v in blended_norm],
         textposition="outside",
         textfont=dict(color=TEXT_DIM, size=10),
-        hovertemplate="%{x} — Blended: %{y:.2f}<extra></extra>",
+        hovertemplate="%{x} — Blended: %{customdata:.1f}/100<extra></extra>",
+        customdata=[v * 10 for v in blended_norm],
     ))
     fig.add_trace(go.Bar(
         name="Quant (÷10)",
@@ -316,7 +319,7 @@ a *filter*, demoting candidates with fundamental red flags even when their price
     ))
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": "hover"})
     st.caption(
-        "Quant score divided by 10 so all three series share a 0–10 axis. "
+        "Blended and Quant scores (0–100) divided by 10 so all three series share a 0–10 axis. "
         "Large divergence between Quant and Claude scores is worth investigating."
     )
 
@@ -339,7 +342,7 @@ a *filter*, demoting candidates with fundamental red flags even when their price
         badge_color = RED if flag_count >= 3 else (AMBER if flag_count >= 1 else GREEN)
         badge_text = f"{flag_count} red flag{'s' if flag_count != 1 else ''}"
 
-        with st.expander(f"{symbol}  —  Blended: {blended_val:.2f}/10  ·  {badge_text}" if blended_val else symbol,
+        with st.expander(f"{symbol}  —  Blended: {blended_val:.1f}/100  ·  {badge_text}" if blended_val else symbol,
                          expanded=(flag_count >= 3)):
 
             c1, c2, c3 = st.columns(3)
@@ -354,9 +357,9 @@ a *filter*, demoting candidates with fundamental red flags even when their price
                     sub="Fundamental quality", accent_color=PURPLE,
                 ), unsafe_allow_html=True)
             with c3:
-                blend_color = GREEN if blended_val and blended_val >= 7 else (AMBER if blended_val and blended_val >= 5 else RED)
+                blend_color = GREEN if blended_val and blended_val >= 70 else (AMBER if blended_val and blended_val >= 50 else RED)
                 st.markdown(metric_html(
-                    "Blended Score", f"{blended_val:.2f}/10" if blended_val is not None else "—",
+                    "Blended Score", f"{blended_val:.1f}/100" if blended_val is not None else "—",
                     sub="60% quant + 40% Claude", accent_color=blend_color,
                 ), unsafe_allow_html=True)
 

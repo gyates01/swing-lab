@@ -668,12 +668,12 @@ def _topbar_help_dialog() -> None:
     st.markdown(f"""
 <div style="font-size:{FS_MD};line-height:1.8;color:{TEXT_MUTED};">
 <strong style="color:{TEXT};">Pages</strong><br>
-· <strong>Gate</strong> — 6-signal macro score (VIX, SPY trend, HYG, yield curve, breadth, VIX term)<br>
-· <strong>Scanner</strong> — top-20 momentum picks ranked within sector<br>
-· <strong>Review</strong> — per-symbol Claude fundamental analysis<br>
-· <strong>Recommendation</strong> — synthesized top-3 picks with entry zones<br>
-· <strong>Trade Log</strong> — open/close positions with thesis and exit notes<br>
+· <strong>Recommendation</strong> — synthesized top picks with entry zones<br>
+· <strong>Execution</strong> — order queue, guardrails, paper portfolio vs S&P 500<br>
 · <strong>Postmortem</strong> — Claude pattern analysis across closed trades<br>
+· <strong>Pipeline</strong> — the layers behind Recommendation, as tabs:<br>
+&nbsp;&nbsp;&nbsp;Gate (6-signal macro score) · Scanner (top-20 momentum) ·
+Review (Claude fundamentals) · Trade Log (positions + history)<br>
 <br><strong style="color:{TEXT};">CLI commands</strong><br>
 <code>uv run swing-lab gate · scan · review · log · rebalance</code>
 </div>""", unsafe_allow_html=True)

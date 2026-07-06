@@ -18,6 +18,8 @@ def fetch_history(symbol: str, period: str, interval: str = "1d"):
 
 def parse_entry_zone(text: str) -> tuple[float, float] | None:
     """Extract (low, high) from strings like '$142–$145'. Returns None if unparseable."""
+    if not isinstance(text, str):  # e.g. NaN from a pandas row
+        return None
     nums = [float(m.replace(",", "")) for m in re.findall(r"\d[\d,]*\.?\d*", text or "")]
     if len(nums) >= 2:
         return min(nums[0], nums[1]), max(nums[0], nums[1])
@@ -26,7 +28,7 @@ def parse_entry_zone(text: str) -> tuple[float, float] | None:
 
 def parse_entry_zone_extras(text: str) -> list[dict]:
     """Extract support shelf, chase limit, and stop levels from entry_zone text."""
-    if not text:
+    if not text or not isinstance(text, str):
         return []
 
     def _clean(s: str) -> float:
@@ -220,23 +222,33 @@ def candle_chart(symbol: str, entry_zone_str: str = "", price: float | None = No
                 bgcolor=CARD, borderpad=1,
             )
 
-        # Swing pivot markers — orange triangles showing what was fed to Claude
+        # Swing pivot markers — orange triangles showing what was fed to Claude.
+        # Pivots older than the displayed window are dropped: plotting them would
+        # stretch the x-axis left of the first candle and offset the whole chart.
         _PIVOT_COLOR = "rgba(251,146,60,0.85)"
         _now = pd.Timestamp.now(tz=hist.index.tz)
-        if swing_lows:
+        _win_start = hist.index[0]
+
+        def _pivots_in_window(pivots):
+            pts = [(_now - pd.Timedelta(days=d), p) for p, d in pivots]
+            return [(x, y) for x, y in pts if x >= _win_start]
+
+        _low_pts = _pivots_in_window(swing_lows) if swing_lows else []
+        if _low_pts:
             fig.add_trace(go.Scatter(
-                x=[_now - pd.Timedelta(days=d) for _, d in swing_lows],
-                y=[p for p, _ in swing_lows],
+                x=[x for x, _ in _low_pts],
+                y=[y for _, y in _low_pts],
                 mode="markers",
                 marker=dict(symbol="triangle-up", color=_PIVOT_COLOR, size=9,
                             line=dict(color="rgba(0,0,0,0.3)", width=1)),
                 name="Swing Low", showlegend=False,
                 hovertemplate="Swing Low (fed to Claude): $%{y:,.2f}<extra></extra>",
             ))
-        if swing_highs:
+        _high_pts = _pivots_in_window(swing_highs) if swing_highs else []
+        if _high_pts:
             fig.add_trace(go.Scatter(
-                x=[_now - pd.Timedelta(days=d) for _, d in swing_highs],
-                y=[p for p, _ in swing_highs],
+                x=[x for x, _ in _high_pts],
+                y=[y for _, y in _high_pts],
                 mode="markers",
                 marker=dict(symbol="triangle-down", color=_PIVOT_COLOR, size=9,
                             line=dict(color="rgba(0,0,0,0.3)", width=1)),

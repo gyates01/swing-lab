@@ -142,6 +142,7 @@ if state["open_positions"]:
 
     st.dataframe([{"symbol": p["symbol"], "shares": p["shares"],
                    "entry": p["entry_price"], "quote": p["quote"],
+                   "stop loss": p.get("stop_price"), "target": p.get("target"),
                    "market_value": p["market_value"], "unrealized": p["unrealized"],
                    "since entry": _pct(p["stock_return"]),
                    "SPY": _pct(p["spy_return"]),

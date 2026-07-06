@@ -6,7 +6,9 @@ from swing_lab.execution.quotes import get_quote
 def _open_paper_trades(conn) -> list[dict]:
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT * FROM trades WHERE mode = 'paper' AND exit_price IS NULL ORDER BY trade_id")
+        "SELECT t.*, r.stop_price, r.target FROM trades t "
+        "LEFT JOIN recommendations r ON t.rec_id = r.rec_id "
+        "WHERE t.mode = 'paper' AND t.exit_price IS NULL ORDER BY t.trade_id")
     cols = [d[0] for d in cursor.description]
     return [dict(zip(cols, row)) for row in cursor.fetchall()]
 
@@ -37,6 +39,7 @@ def paper_account_state(conn, quote_fn=get_quote) -> dict:
             "entry_price": t["entry_price"], "quote": quote,
             "market_value": value, "unrealized": value - basis,
             "opened_at": t["opened_at"],
+            "stop_price": t.get("stop_price"), "target": t.get("target"),
         })
 
     return {

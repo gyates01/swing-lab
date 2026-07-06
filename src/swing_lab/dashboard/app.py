@@ -134,10 +134,8 @@ st.markdown(f"""
             letter-spacing:0.08em;margin:24px 0 10px;">NAVIGATE</div>
 """, unsafe_allow_html=True)
 
-c1, c2, c3, c4, c5, c6 = st.columns(6)
-c1.page_link("pages/1_Macro_Gate.py",    label="Layer 1 — Macro Gate")
-c2.page_link("pages/2_Scanner.py",       label="Layer 2 — Scanner")
-c3.page_link("pages/3_Claude_Review.py", label="Layer 3 — Claude Review")
-c4.page_link("pages/4_Trade_Log.py",     label="Trade Log")
-c5.page_link("pages/5_Recommendation.py", label="Recommendation")
-c6.page_link("pages/6_Postmortem.py",    label="Postmortem")
+c1, c2, c3, c4 = st.columns(4)
+c1.page_link("pages/1_Recommendation.py", label="Recommendation")
+c2.page_link("pages/2_Execution.py",      label="Execution")
+c3.page_link("pages/3_Postmortem.py",     label="Postmortem")
+c4.page_link("pages/4_Pipeline.py",       label="Pipeline — Gate · Scanner · Review · Log")

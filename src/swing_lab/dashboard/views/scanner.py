@@ -9,6 +9,9 @@ from swing_lab.dashboard.theme import (
     ACCENT, GREEN, RED, AMBER, BORDER, CARD, TEXT, TEXT_DIM, TEXT_MUTED,
 )
 
+# 12-1m momentum above this is almost always a split/data artifact, not a signal
+_MOMENTUM_OUTLIER = 3.0  # +300%
+
 
 def _picks_table_html(df: pd.DataFrame) -> str:
     hdr = (
@@ -22,10 +25,11 @@ def _picks_table_html(df: pd.DataFrame) -> str:
         rank = row.get("rank_score")
         mom_val = float(mom) if pd.notna(mom) else None
         rank_val = float(rank) if pd.notna(rank) else None
-        mom_str = f"{mom_val*100:+.1f}%" if mom_val is not None else "—"
+        is_outlier = mom_val is not None and mom_val > _MOMENTUM_OUTLIER
+        mom_str = f"{mom_val*100:+.1f}%" + (" ⚠" if is_outlier else "") if mom_val is not None else "—"
         rank_str = f"{rank_val:.0f}" if rank_val is not None else "—"
         rank_color = GREEN if (rank_val is not None and rank_val >= 70) else (AMBER if (rank_val is not None and rank_val >= 40) else RED)
-        mom_color = GREEN if (mom_val is not None and mom_val > 0) else RED
+        mom_color = AMBER if is_outlier else (GREEN if (mom_val is not None and mom_val > 0) else RED)
         rows += (
             f'<tr>'
             f'<td style="{cell}color:{TEXT_DIM};width:36px;">{i}</td>'
@@ -196,7 +200,9 @@ which further filters to the top 6.
 
     with chart_r:
         st.markdown(section_header_html("Momentum Distribution"), unsafe_allow_html=True)
-        valid_mom = picks["momentum"].dropna() * 100
+        _mom = picks["momentum"].dropna()
+        # Exclude split/data artifacts so one bad ticker doesn't flatten the histogram
+        valid_mom = _mom[_mom <= _MOMENTUM_OUTLIER] * 100
         median_val = float(valid_mom.median()) if not valid_mom.empty else 0.0
 
         fig = make_fig(
@@ -231,6 +237,19 @@ which further filters to the top 6.
                 "med",
                 f"Data quality — {missing_count} symbol(s) missing momentum data",
                 "yfinance failed to fetch price history for these symbols. Their rank scores may be inaccurate.",
+            ),
+            unsafe_allow_html=True,
+        )
+
+    _outliers = picks[picks["momentum"] > _MOMENTUM_OUTLIER]["symbol"].tolist()
+    if _outliers:
+        st.markdown(
+            risk_row_html(
+                "high",
+                f"Data quality — implausible momentum: {', '.join(_outliers)}",
+                f"12-1m momentum above +{_MOMENTUM_OUTLIER*100:.0f}% is almost always a stock split or "
+                "bad yfinance history, not a real signal. Excluded from the distribution chart; "
+                "verify the price history before trusting the rank.",
             ),
             unsafe_allow_html=True,
         )

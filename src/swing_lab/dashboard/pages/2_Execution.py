@@ -109,7 +109,8 @@ state = paper_account_state(conn)
 m1, m2, m3 = st.columns(3)
 m1.metric("Equity", f"${state['equity']:,.2f}")
 m2.metric("Cash", f"${state['cash']:,.2f}")
-m3.metric("Unrealized P&L", f"${state['unrealized']:,.2f}")
+_unreal = state["unrealized"]
+m3.metric("Unrealized P&L", f"{'-' if _unreal < 0 else ''}${abs(_unreal):,.2f}")
 
 # --- vs S&P 500 ---
 today = date.today()
@@ -140,6 +141,7 @@ if state["open_positions"]:
     def _pct(v):
         return f"{v:+.1%}" if v is not None else "—"
 
+    _usd = st.column_config.NumberColumn(format="$%.2f")
     st.dataframe([{"symbol": p["symbol"], "shares": p["shares"],
                    "entry": p["entry_price"], "quote": p["quote"],
                    "stop loss": p.get("stop_price"), "target": p.get("target"),
@@ -147,6 +149,9 @@ if state["open_positions"]:
                    "since entry": _pct(p["stock_return"]),
                    "SPY": _pct(p["spy_return"]),
                    "vs SPY": _pct(p["alpha"])}
-                  for p in rows], use_container_width=True)
+                  for p in rows], use_container_width=True,
+                 column_config={"entry": _usd, "quote": _usd, "stop loss": _usd,
+                                "target": _usd, "market_value": _usd, "unrealized": _usd,
+                                "shares": st.column_config.NumberColumn(format="%.4f")})
 else:
     st.caption("No open paper positions.")

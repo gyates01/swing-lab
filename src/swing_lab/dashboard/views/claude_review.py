@@ -190,7 +190,7 @@ a *filter*, demoting candidates with fundamental red flags even when their price
 
         flag_note = ""
         if len(top_flags) >= 3:
-            flag_note = f"**Caution:** The top pick has {len(top_flags)} red flags. Even with a strong score, multiple red flags suggest elevated risk — consider reducing position size or skipping."
+            flag_note = f"<strong>Caution:</strong> The top pick has {len(top_flags)} red flags. Even with a strong score, multiple red flags suggest elevated risk — consider reducing position size or skipping."
         elif len(top_flags) >= 1:
             flag_note = f"The top pick has {len(top_flags)} red flag(s) — review them below before committing."
 

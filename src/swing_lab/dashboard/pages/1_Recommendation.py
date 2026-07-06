@@ -63,8 +63,15 @@ def _risks_to_rows(risks: list) -> str:
     parts = []
     for i, risk in enumerate(risks):
         sev = _SEV_ORDER[min(i, len(_SEV_ORDER) - 1)]
-        title = risk[:60].split("—")[0].split(":")[0].strip() if "—" in risk or ":" in risk else risk[:60]
-        desc = risk[len(title):].lstrip("—: ").strip() or risk
+        if "—" in risk[:60] or ":" in risk[:60]:
+            title = risk[:60].split("—")[0].split(":")[0].strip()
+            desc = risk[len(title):].lstrip("—: ").strip() or risk
+        elif len(risk) > 60:
+            # break at a word boundary, never mid-word
+            title = risk[:60].rsplit(" ", 1)[0].rstrip(",;")
+            desc = risk[len(title):].strip(" ,;")
+        else:
+            title, desc = risk, ""
         parts.append(risk_row_html(sev, title, desc))
     return "".join(parts)
 

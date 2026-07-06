@@ -141,17 +141,21 @@ if state["open_positions"]:
     def _pct(v):
         return f"{v:+.1%}" if v is not None else "—"
 
-    _usd = st.column_config.NumberColumn(format="$%.2f")
+    def _usd_or_dash(v):
+        # #2 picks have no synthesized levels; show an explicit dash, not "None"
+        return f"${v:,.2f}" if v is not None else "—"
+
+    _usd = st.column_config.NumberColumn(format="dollar")
     st.dataframe([{"symbol": p["symbol"], "shares": p["shares"],
                    "entry": p["entry_price"], "quote": p["quote"],
-                   "stop loss": p.get("stop_price"), "target": p.get("target"),
+                   "stop loss": _usd_or_dash(p.get("stop_price")), "target": _usd_or_dash(p.get("target")),
                    "market_value": p["market_value"], "unrealized": p["unrealized"],
                    "since entry": _pct(p["stock_return"]),
                    "SPY": _pct(p["spy_return"]),
                    "vs SPY": _pct(p["alpha"])}
                   for p in rows], use_container_width=True,
-                 column_config={"entry": _usd, "quote": _usd, "stop loss": _usd,
-                                "target": _usd, "market_value": _usd, "unrealized": _usd,
+                 column_config={"entry": _usd, "quote": _usd,
+                                "market_value": _usd, "unrealized": _usd,
                                 "shares": st.column_config.NumberColumn(format="%.4f")})
 else:
     st.caption("No open paper positions.")

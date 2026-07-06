@@ -350,7 +350,9 @@ def candle_chart(symbol: str, entry_zone_str: str = "", price: float | None = No
                 fig.add_hline(y=lvl["price"], line=dict(color=_PURPLE, dash="dot", width=0.8))
                 left_labels.append((lvl["price"], f"{lvl['label']}  ${lvl['price']:,.2f}", _PURPLE, 8, "bottom" if i % 2 == 0 else "top"))
 
-        if left_labels:
+        # Below ~260px the level labels overlap each other into an unreadable
+        # pile (runner-up and trade-log mini charts); keep the lines, drop text.
+        if left_labels and height >= 260:
             left_x = hist.index[0]
             for lbl_price, lbl_text, lbl_color, lbl_size, lbl_anchor in left_labels:
                 fig.add_annotation(

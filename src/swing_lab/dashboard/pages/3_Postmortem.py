@@ -105,7 +105,7 @@ render_topbar()
 st.markdown(f"""
 <div style="margin-bottom:6px;">
     <span style="color:{BLUE};font-size:0.72rem;text-transform:uppercase;
-                 letter-spacing:0.1em;">Layer 6</span>
+                 letter-spacing:0.1em;">Feedback Loop</span>
     <h1 style="margin:2px 0 0;">Trade Postmortem</h1>
 </div>
 <p style="color:{TEXT_DIM};font-size:0.85rem;margin-top:0;">

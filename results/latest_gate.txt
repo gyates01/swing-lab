@@ -1,12 +1,12 @@
 ﻿
-MACRO GATE ΓÇö STAND DOWN
-  Composite score: 36.4/100
-  Deployment sizing: 0%
+MACRO GATE ΓÇö PARTIAL
+  Composite score: 49.4/100
+  Deployment sizing: 60%
 
 Components:
-  vix_level           : 43.3
-  vix_term_structure  : 79.0
-  breadth             : 0.0
-  credit_spread       : 53.6
-  put_call            : 31.6
-  factor_crowding     : 11.0
+  vix_level           : 39.4
+  vix_term_structure  : 63.9
+  breadth             : 100.0
+  credit_spread       : 44.1
+  put_call            : 37.2
+  factor_crowding     : 12.0

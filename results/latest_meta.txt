@@ -1,4 +1,4 @@
-﻿run_date=2026-07-27
-completed_at=2026-07-27 09:00:05 UTC
+﻿run_date=2026-07-28
+completed_at=2026-07-28 09:00:07 UTC
 gate_lines=12
-scan_lines=2
+scan_lines=27

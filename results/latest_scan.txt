@@ -1,27 +1,27 @@
 ﻿Fetching macro gate...
-MACRO GATE ΓÇö PARTIAL | score=63.3 | sizing=60%
+MACRO GATE ΓÇö PARTIAL | score=61.8 | sizing=60%
 Scoring S&P 500 universe (batched download ΓÇö under a minute)...
     symbol    sector                    momentum    score    gate_sizing
 --  --------  ----------------------  ----------  -------  -------------
- 0  VLO       Energy                        0.89   100.00           0.60
- 1  STT       Financials                    0.60   100.00           0.60
- 2  SNDK      Information Technology       41.19   100.00           0.60
- 3  STLD      Materials                     0.69   100.00           0.60
- 4  ROST      Consumer Discretionary        0.59   100.00           0.60
- 5  MNST      Consumer Staples              0.64   100.00           0.60
- 6  MRNA      Health Care                   1.44   100.00           0.60
- 7  EIX       Utilities                     0.52   100.00           0.60
- 8  HST       Real Estate                   0.53   100.00           0.60
- 9  FIX       Industrials                   2.28   100.00           0.60
-10  ECHO      Communication Services        2.61   100.00           0.60
-11  VRT       Industrials                   1.40    98.73           0.60
-12  MS        Financials                    0.56    98.68           0.60
-13  MU        Information Technology        7.95    98.63           0.60
-14  CNC       Health Care                   1.43    98.31           0.60
-15  GM        Consumer Discretionary        0.57    97.87           0.60
-16  CAT       Industrials                   1.33    97.47           0.60
-17  C         Financials                    0.52    97.37           0.60
-18  WDC       Information Technology        7.06    97.26           0.60
-19  CASY      Consumer Staples              0.53    97.06           0.60
+ 0  STLD      Materials                     0.76   100.00           0.60
+ 1  STT       Financials                    0.63   100.00           0.60
+ 2  VLO       Energy                        0.88   100.00           0.60
+ 3  FIX       Industrials                   2.28   100.00           0.60
+ 4  ECHO      Communication Services        2.32   100.00           0.60
+ 5  EIX       Utilities                     0.49   100.00           0.60
+ 6  ROST      Consumer Discretionary        0.55   100.00           0.60
+ 7  SNDK      Information Technology       39.57   100.00           0.60
+ 8  MRNA      Health Care                   1.36   100.00           0.60
+ 9  MNST      Consumer Staples              0.65   100.00           0.60
+10  HST       Real Estate                   0.52   100.00           0.60
+11  VRT       Industrials                   1.45    98.73           0.60
+12  MS        Financials                    0.60    98.68           0.60
+13  MU        Information Technology        7.98    98.63           0.60
+14  CNC       Health Care                   1.25    98.31           0.60
+15  GM        Consumer Discretionary        0.48    97.87           0.60
+16  CAT       Industrials                   1.28    97.47           0.60
+17  BNY       Financials                    0.53    97.37           0.60
+18  WDC       Information Technology        7.35    97.26           0.60
+19  CASY      Consumer Staples              0.55    97.06           0.60
 
-Scan #132 saved to swing.db
+Scan #133 saved to swing.db

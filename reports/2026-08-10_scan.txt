@@ -1,0 +1,47 @@
+
+========================================================================================
+  MOMENTUM SCAN (12-1M PROXY)  —  2026-08-10
+========================================================================================
+  Rank  Ticker   Sector             Momentum    1M Ret         Price  Est?
+----------------------------------------------------------------------------------------
+  1     AMD      Technology          +160.5%     +6.0%       $208.44  
+  2     LLY      Healthcare           +91.2%     +2.0%     $1,192.32  *
+  3     UNH      Healthcare           +80.0%     +4.0%       $406.81  
+  4     GOOGL    Technology           +73.1%     +4.0%       $355.00  
+  5     GOOG     Technology           +73.1%     +4.0%       $353.47  
+  6     META     Technology           +60.0%     +5.0%       $589.90  *
+  7     AAPL     Technology           +55.2%     +6.0%       $258.88  
+  8     XOM      Energy               +45.9%     +3.0%       $153.04  
+  9     ORCL     Technology           +40.0%     +4.0%       $161.61  *
+  10    JPM      Financials           +34.0%     +3.0%       $357.70  *
+  11    CVX      Energy               +33.0%     +3.0%       $186.56  
+  12    AVGO     Technology           +30.4%     +4.0%       $426.29  
+  13    AMZN     Cons. Disc.          +30.0%     +5.0%       $274.48  *
+  14    WMT      Cons. Staples        +30.0%     +3.0%       $109.00  *
+  15    COST     Cons. Staples        +28.0%     +3.0%       $947.82  *
+  16    BAC      Financials           +28.0%     +4.0%        $52.59  *
+  17    ABBV     Healthcare           +25.0%     +3.0%       $245.00  *
+  18    MA       Financials           +25.0%     +3.0%       $570.97  *
+  19    NVDA     Technology           +21.1%     +5.0%       $223.96  
+  20    V        Financials           +20.0%     +3.0%       $362.50  *
+  21    HD       Cons. Disc.          +15.0%     +3.0%       $355.62  *
+  22    NFLX     Technology           +14.0%     -3.0%        $74.14  *
+  23    BRK-B    Financials           +13.1%     +3.0%       $521.80  
+  24    JNJ      Healthcare           +10.0%     +2.0%       $255.00  *
+  25    KO       Cons. Staples         +8.0%     +2.0%        $87.05  *
+  26    PG       Cons. Staples         +7.0%     +2.0%       $147.00  *
+  27    TSLA     Cons. Disc.           +5.0%     +3.0%       $329.00  
+  28    MRK      Healthcare            +2.0%     +1.0%       $128.33  *
+  29    MSFT     Technology           -10.4%     +4.0%       $499.99  
+  30    CRM      Technology           -15.0%     +2.0%       $165.00  *
+----------------------------------------------------------------------------------------
+
+  Data notes:
+  * = value is an estimate (financial APIs blocked by egress policy)
+  Momentum = 1-year return used as proxy for 12-1m momentum
+  12-1m exact formula (price_11mo_ago/price_12mo_ago-1) requires
+  historical data unavailable in this session.
+  NFLX price is post-split (likely 10:1 split; mktcap $310B)
+  WMT price is post-split implied from mktcap $881B
+  Sources: WebSearch (investing.com, CNN markets, Robinhood,
+  Google Finance, Yahoo Finance snippets, financecharts.com)

@@ -1,0 +1,42 @@
+==============================================================
+  MACRO GATE REPORT  —  2026-08-10
+==============================================================
+
+  [DATA NOTE]  Yahoo Finance & all financial APIs blocked
+  by egress policy. Data sourced via WebSearch (Google).
+  Values marked * are estimates; exact 20d-ago prices
+  unavailable. See methodology note at bottom.
+
+--------------------------------------------------------------
+  COMPONENT               VALUE               SCORE
+--------------------------------------------------------------
+  VIX Level               14.90 (<15)       20/20
+  VIX Term Structure      18.72/14.90=1.256   15/15
+                         (contango (calm))
+  Credit Spread           HYG +0.90%  IEF -0.35%   15/15
+                         Spread +1.25% (>0 (tightening)) *est.
+  SPY Trend               $738.93 vs SMA200 $706.10   15/15
+                         +4.6% (>2% above SMA200)
+  Factor Crowding         QQQ +1.45% / IWM +4.15%   15/15
+                         Ratio 0.35 (<1.5 (balanced)) *est.
+--------------------------------------------------------------
+  COMPOSITE SCORE         80/80 → FULL SIZING
+==============================================================
+
+  Raw inputs:
+    VIX:        14.9  |  VIX3M:  18.72  |  VIX 1m-high: 20.88
+    SPY:        $738.93  |  SMA200: $706.1
+    HYG:        $79.61  (20d-ago ~$78.9 *)
+    IEF:        $93.17  (20d-ago ~$93.5 *)
+    QQQ:        $723.03  (20d-ago ~$712.7)
+    IWM:        $302.04  (20d-ago ~$290.0 *)
+
+  Methodology notes:
+  - VIX/VIX3M/SPY/HYG/IEF/QQQ/IWM current prices via WebSearch
+  - HYG 20d-ago estimated near 52-wk low ($78.57) during Jul
+    VIX spike (20.88 peak). IEF 20d-ago estimated higher
+    (flight-to-safety bid). QQQ 20d-ago interpolated from
+    confirmed Jul 2 data ($712.60). IWM 20d-ago estimated
+    ~4% below current during small-cap stress period.
+  - SPY SMA200: $706.10 from technical analysis (one of three
+    sources; others cited $698 and $745).

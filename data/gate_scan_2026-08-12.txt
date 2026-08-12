@@ -1,0 +1,99 @@
+================================================================================
+SWING LAB — GATE + SCAN REPORT
+Generated: 2026-08-12 (automated run)
+Data source: WebSearch (Yahoo Finance / finance APIs blocked by network proxy)
+================================================================================
+
+════════════════════════════════════════════════════════════
+SECTION 1: MACRO GATE REPORT
+════════════════════════════════════════════════════════════
+
+Component                                     Value  Score
+────────────────────────────────────────────────────────────
+VIX Level                                     15.55     15
+  (15-20 band → 15pts; VIX at 15.55, calm)
+
+VIX Term Structure (VIX3M/VIX)                1.204     15
+  (VIX3M 18.72/VIX 15.55 = 1.204; >1.05 = contango, calm → 15pts)
+
+SPY vs 200d SMA                               +4.6%     15
+  (SPY $738.93 vs 200d $706.10; +4.6% → 15pts)
+
+Credit Spread (HYG-IEF 20d)                  +1.26%     15
+  (HYG 20d ~+0.52%, IEF 20d ~-0.74%; spread +1.26% → 15pts)
+  (HYG $79.61 Aug-7; IEF $92.81 Aug-12; rates rose, HYG held)
+
+Factor Crowding (QQQ/IWM 20d)                  0.42     15
+  (QQQ 20d ~+3.5%, IWM 20d ~+8.4%; ratio 0.42 < 1.5 → balanced → 15pts)
+  (IWM at near-ATH $303.06; small caps leading = healthy breadth)
+
+────────────────────────────────────────────────────────────
+COMPOSITE SCORE                                        75/80
+REGIME:   ★ FULL SIZING ★  (threshold: ≥56)
+════════════════════════════════════════════════════════════
+
+Key macro context (Aug 12, 2026):
+• VIX at 15.55 — calm; well within 15-20 band
+• VIX3M/VIX = 1.204 — strong contango; options market pricing calm
+• SPY $738.93 — 4.6% above 200d MA; bull trend intact
+• IWM at near-ATH (hit $303.06 Aug-5); small caps leading = broad participation
+• HYG stable ~$79.61 while IEF fell — rates rising but credit not stressed
+• S&P 500 ~7,728 as of Aug-11; semis (AMD +155%, AVGO +39%, NVDA +32%) dominating
+• CRM, NFLX, MSFT remain major laggards within S&P 500
+
+════════════════════════════════════════════════════════════
+SECTION 2: MOMENTUM SCAN (TOP 30 S&P 500 BY MARKET CAP)
+════════════════════════════════════════════════════════════
+
+Momentum proxy: YTD 2026 return (12-1m formula unavailable; finance APIs blocked)
+⚠  Rankings directionally correct but verify before trading.
+
+Rank  Ticker  Sector                  Momentum%  Data Quality
+--------------------------------------------------------------------------------
+★1    AMD     Technology               +155.54%  ✓ confirmed Aug-10 ($469.56; Q2 rev +50% YoY)
+★2    AVGO    Technology                +39.50%  ✓ confirmed (AI semicond. leadership)
+★3    NVDA    Technology                +31.70%  ✓ confirmed Aug-2026
+★4    XOM     Energy                    +28.89%  ✓ confirmed Aug-2026
+★5    JNJ     Health Care               +25.56%  ✓ confirmed ($256.98, analysts +$271)
+★6    LLY     Health Care               +23.20%  ✓ confirmed (biotech/GLP-1 demand)
+ 7    CVX     Energy                    +21.00%  ~ est. (energy sector leadership; +4.5% Aug-11)
+ 8    BAC     Financials                +16.12%  ✓ confirmed
+ 9    WMT     Consumer Staples          +15.20%  ✓ confirmed
+ 10   ABBV    Health Care               +12.42%  ✓ confirmed
+ 11   AAPL    Technology                 +9.62%  ✓ confirmed (Q3 FY26 rev $109.4B record)
+ 12   KO      Consumer Staples           +8.00%  ~ est. (article: 'up 8% YTD')
+ 13   MRK     Health Care                +7.50%  ~ est. ($129.30; 16-mo high reported)
+ 14   PG      Consumer Staples           +4.80%  ✓ confirmed (analyst target $160.70)
+ 15   BRK-B   Financials                 +3.81%  ✓ confirmed
+ 16   JPM     Financials                 +3.21%  ✓ confirmed
+ 17   GOOGL   Comm. Services             +2.29%  ✓ confirmed
+ 18   GOOG    Comm. Services             +2.29%  ✓ confirmed (same class as GOOGL)
+ 19   COST    Consumer Staples           +2.00%  ~ est. (ATH $1092 May→$944 Aug; net ~+2%)
+ 20   MA      Financials                 -0.90%  ✓ confirmed
+ 21   HD      Consumer Disc.             -3.00%  ~ est. ($356; off prior highs)
+ 22   TSLA    Consumer Disc.             -9.33%  ✓ confirmed (Jul-10)
+ 23   UNH     Health Care               -11.16%  ✓ confirmed
+ 24   V       Financials                -11.59%  ✓ confirmed
+ 25   AMZN    Consumer Disc.            -13.10%  ✓ confirmed Aug-3
+ 26   META    Comm. Services            -13.20%  ✓ confirmed Aug-3
+ 27   MSFT    Technology                -14.67%  ✓ confirmed (recovering after -18% H1)
+ 28   ORCL    Technology                -21.00%  ~ est. (down 28% on Aug-4, partial recovery to $147)
+ 29   NFLX    Comm. Services            -22.79%  ✓ confirmed
+ 30   CRM     Technology                -35.54%  ✓ confirmed (52-wk low $146 Jun-22)
+--------------------------------------------------------------------------------
+
+TOP 6 REVIEW CANDIDATES: AMD, AVGO, NVDA, XOM, JNJ, LLY
+
+════════════════════════════════════════════════════════════
+INFRASTRUCTURE NOTES
+════════════════════════════════════════════════════════════
+1. Yahoo Finance API (query1/query2): BLOCKED — proxy 403
+2. All direct finance data sites blocked: stooq, slickcharts, macrotrends, etc.
+3. Gmail send: NOT available in MCP config; results delivered via PushNotification
+4. VIX3M: last confirmed data Aug-8; market closed Aug-12 early (if any)
+5. IEF 20d estimate: linear interp between Jul-6 ($94.18) and Aug-12 ($92.81)
+6. HYG 20d estimate: price stable $79.20→$79.61 (52-wk: $78.57–$81.36)
+7. QQQ/IWM 20d: QQQ confirmed +3.28% vs 2wk ago; IWM from ~$278→$301 est.
+
+Routine completed at: 2026-08-12 (automated run) UTC
+================================================================================

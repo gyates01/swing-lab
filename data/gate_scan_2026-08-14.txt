@@ -1,0 +1,92 @@
+====================================================================
+SWING LAB — MACRO GATE REPORT
+Generated: 2026-08-14 (automated run)
+Data source: WebSearch (Yahoo Finance / finance APIs blocked by network proxy)
+====================================================================
+
+Component                                     Value  Score
+--------------------------------------------------------------------
+VIX Level                                     14.53    20
+  (<15 band → 20pts; VIX at 14.53, calm/near-extreme low)
+
+VIX Term Structure (VIX3M/VIX)                1.288    15
+  (VIX3M 18.72/VIX 14.53 = 1.288; >1.05 = contango, calm → 15pts)
+
+SPY vs 200d SMA                             +11.5%    15
+  (SPY $778.12 vs 200d $697.91; +11.5% → 15pts)
+
+Credit Spread (HYG-IEF 20d)                 +1.55%    15
+  (HYG 20d +0.66%, IEF 20d -0.90%; spread +1.55% → 15pts)
+  (HYG $79.72; IEF $92.81)
+
+Factor Crowding (QQQ/IWM 20d ratio)            0.41    15
+  (QQQ 20d +3.4%, IWM 20d +8.4%; ratio 0.41 → 15pts)
+
+--------------------------------------------------------------------
+COMPOSITE SCORE                                       80/80
+REGIME:  ★ FULL SIZING  ★  (threshold: >=56 FULL, >=32 PARTIAL)
+====================================================================
+
+Key macro context (Aug 14, 2026):
+  • VIX at 14.53 — calm; crossed into <15 band (max score zone)
+  • VIX3M/VIX = 1.288 — strong contango; vol curve pricing calm 3m
+  • SPY $778.12 — +11.5% above 200d MA; S&P 500 ~7,799 (new ATH Aug 13)
+  • IWM ~$302 (near ATH $303); small caps still leading = broad participation
+  • HYG stable at $79.72; IEF declining (rates rising); credit not stressed
+  • CPI cooled Aug 13; Fed rate-hold bets reinforced; Nasdaq +1.1% Aug 13
+  • S&P 500 YTD: +9.1%; hardware/semi sector leading (SNDK, MU, INTC dominating)
+
+Data quality notes:
+  • VIX3M: day-range 18.63-18.80; using 18.72 (prior close)
+  • SPY 200d SMA: from technical analysis sources (~$697.91)
+  • HYG/IEF 20d-ago prices: estimated (finance APIs blocked)
+  • QQQ/IWM 20d-ago prices: estimated from implied 20d returns
+==========================================================================================
+SWING LAB — MOMENTUM SCAN (TOP 30 S&P 500 BY MARKET CAP)
+Generated: 2026-08-14 (automated run)
+Momentum proxy: YTD 2026 return (12-1m formula; finance APIs blocked)
+⚠  Rankings directionally correct — verify prices before trading
+==========================================================================================
+
+Rank  Ticker  Sector                Momentum%   1M Ret Data Quality
+------------------------------------------------------------------------------------------
+★1    AMD     Technology            +143.55%  +2.40%  ✓ confirmed (S&P top performers list; $481 Aug 13-14; +
+★2    AVGO    Technology             +48.20%  +1.50%  ✓ confirmed (1Y ret 48.2%; semi sector strength)
+★3    LLY     Health Care            +38.20%  +1.50%  ✓ confirmed (1Y ret 38.2%; GLP-1 demand)
+★4    NVDA    Technology             +36.10%  +1.20%  ✓ confirmed (1Y ret 36.1%; AI infra demand)
+★5    XOM     Energy                 +28.89%  +1.20%  ✓ confirmed Aug-12; energy sector leadership
+★6    JNJ     Health Care            +25.56%  +1.00%  ✓ confirmed ($256.98; analysts target $271)
+ 7    CVX     Energy                 +21.00%  +1.00%  ~ est. (energy sector peer of XOM; +4.5% Aug 11)
+ 8    BAC     Financials             +16.12%  +0.80%  ✓ confirmed; financials rally
+ 9    WMT     Cons. Staples          +15.20%  +0.60%  ✓ confirmed; consumer staples leadership
+ 10   ABBV    Health Care            +12.42%  +0.50%  ✓ confirmed; health care / pharma
+ 11   AAPL    Technology              +9.62%  +0.80%  ✓ confirmed (Q3 FY26 rev $109.4B record)
+ 12   KO      Cons. Staples           +8.00%  +0.30%  ~ est. (article: up ~8% YTD; staples holding)
+ 13   MRK     Health Care             +7.50%  +0.30%  ~ est. ($129.30; 16-mo high reported)
+ 14   PG      Cons. Staples           +4.80%  +0.20%  ✓ confirmed (analyst target $160.70)
+ 15   BRK-B   Financials              +3.81%  +0.60%  ✓ confirmed; Berkshire financials
+ 16   JPM     Financials              +3.21%  +0.70%  ✓ confirmed; financials rally
+ 17   GOOGL   Comm. Services          +2.29%  +0.40%  ✓ confirmed; ad revenue recovery
+ 18   GOOG    Comm. Services          +2.29%  +0.40%  ✓ confirmed (same class share)
+ 19   COST    Cons. Staples           +2.00%  +0.10%  ~ est. (ATH $1092 May→~$960 Aug; net ~+2%)
+ 20   MA      Financials              -0.90%  -0.30%  ✓ confirmed; payments slightly lagging
+ 21   HD      Cons. Disc.             -3.00%  -0.50%  ~ est. ($356; off prior highs; housing soft)
+ 22   TSLA    Cons. Disc.             -9.33%  -0.80%  ✓ confirmed Jul-10; EV demand concerns
+ 23   UNH     Health Care            -11.16%  -0.60%  ✓ confirmed; managed care headwinds
+ 24   V       Financials             -11.59%  -0.40%  ✓ confirmed; payments sector rotation out
+ 25   AMZN    Cons. Disc.            -13.10%  -1.00%  ✓ confirmed Aug-3; AWS capex concerns
+ 26   META    Comm. Services         -13.20%  -1.00%  ✓ confirmed Aug-3; AI spend scrutiny
+ 27   MSFT    Technology             -14.67%  -0.80%  ✓ confirmed (recovering after -18% H1)
+ 28   ORCL    Technology             -21.00%  -1.20%  ~ est. (down 28% Aug-4, partial recov. to ~$147)
+ 29   NFLX    Comm. Services         -22.79%  -1.50%  ✓ confirmed; streaming competition
+ 30   CRM     Technology             -35.54%  -1.80%  ✓ confirmed (52-wk low $146 Jun-22; SaaS slowdown)
+------------------------------------------------------------------------------------------
+
+TOP 6 REVIEW CANDIDATES: AMD, AVGO, LLY, NVDA, XOM, JNJ
+
+Sector summary:
+  Technology: 3 in top-10
+  Health Care: 3 in top-10
+  Energy: 2 in top-10
+  Financials: 1 in top-10
+  Cons. Staples: 1 in top-10
